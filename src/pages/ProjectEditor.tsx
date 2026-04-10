@@ -160,8 +160,8 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Replace YOUR_TOKEN with real token
-      const code = mainFile.content ? mainFile.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, botToken.trim()) : '';
+      // Send code as-is - the proxy handles YOUR_TOKEN replacement with proper quote preservation
+      const code = mainFile.content || '';
 
       addLog('info', '📡 جاري إنشاء خدمة على Railway...');
 
