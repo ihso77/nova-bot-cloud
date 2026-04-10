@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Shield, Server } from 'lucide-react';
+import { LogOut, User, Shield, Server, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Navbar() {
@@ -23,6 +23,9 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           <Link to="/plans" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             الباقات
+          </Link>
+          <Link to="/tools/discord-username-checker" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <Search className="w-3 h-3" /> فاحص اليوزرات
           </Link>
           {user ? (
             <>
