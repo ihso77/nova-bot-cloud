@@ -668,8 +668,8 @@ export default function ProjectEditor() {
     error: 'text-red-400',
   };
 
-  const logIcons: Record<string, typeof Terminal> = {
-    info: Terminal,
+  const logIcons: Record<string, typeof TerminalIcon> = {
+    info: TerminalIcon,
     success: CheckCircle2,
     warning: AlertCircle,
     error: AlertCircle,
