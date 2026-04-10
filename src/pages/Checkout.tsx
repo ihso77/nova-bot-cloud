@@ -42,60 +42,33 @@ export default function Checkout() {
     setStep('checkout');
 
     try {
-      // Load Paymento config from settings
-      const { data: apiKeyData } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'paymento_api_key')
-        .maybeSingle();
-      const { data: secretData } = await supabase
-        .from('settings')
-        .select('value')
-        .eq('key', 'paymento_secret_key')
-        .maybeSingle();
-
-      const apiKey = apiKeyData?.value as string;
-      const secretKey = secretData?.value as string;
-
-      if (!apiKey || !secretKey) {
-        throw new Error('بوابة الدفع غير متاحة حالياً. تواصل مع الدعم.');
-      }
-
       const siteUrl = window.location.origin;
 
-      // Create payment directly via Paymento API
-      const paymentRes = await fetch('https://api.paymento.io/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'X-Secret-Key': secretKey,
-        },
-        body: JSON.stringify({
-          amount: plan.price,
-          currency: 'USD',
-          description: `Nova VPS - ${plan.name}`,
-          metadata: { planId: plan.id, userId: user.id },
-          success_url: `${siteUrl}/payment/success?plan=${plan.id}&user=${user.id}`,
-          cancel_url: `${siteUrl}/payment/cancel`,
-        }),
+      // Call database RPC (server-side, no CORS issues)
+      const { data: result, error: rpcError } = await supabase.rpc('create_paymento_payment', {
+        p_plan_id: plan.id,
+        p_user_id: user.id,
+        p_amount: plan.price,
+        p_success_url: `${siteUrl}/payment/success?plan=${plan.id}&user=${user.id}`,
+        p_cancel_url: `${siteUrl}/payment/cancel`,
       });
 
-      if (!paymentRes.ok) {
-        const errText = await paymentRes.text();
-        console.error('Paymento error:', paymentRes.status, errText);
-        throw new Error('حدث خطأ في الاتصال ببوابة الدفع');
+      if (rpcError) throw rpcError;
+
+      const paymentData = result as any;
+
+      if (paymentData?.error) {
+        throw new Error(paymentData.error);
       }
 
-      const paymentData = await paymentRes.json();
-      const paymentUrl = paymentData.url || paymentData.payment_url || paymentData.checkout_url;
+      const paymentUrl = paymentData?.url || paymentData?.payment_url || paymentData?.checkout_url;
 
       if (!paymentUrl) {
-        throw new Error('لم يتم استلام رابط الدفع');
+        throw new Error('لم يتم استلام رابط الدفع من بوابة الدفع');
       }
 
       // Save payment record
-      const payId = paymentData.id || paymentData.payment_id;
+      const payId = paymentData?.id || paymentData?.payment_id;
       if (payId) {
         await supabase.from('payments').insert({
           id: payId,
