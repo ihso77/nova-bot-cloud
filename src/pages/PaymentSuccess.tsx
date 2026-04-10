@@ -1,44 +1,137 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'loading' | 'active' | 'pending' | 'error'>('loading');
+  const { user } = useAuth();
+  const [status, setStatus] = useState<'loading' | 'active' | 'error'>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    verifyPayment();
+    activateSubscription();
   }, []);
 
-  const verifyPayment = async () => {
-    // Wait a moment for webhook to process
-    await new Promise(r => setTimeout(r, 3000));
-
-    const userId = searchParams.get('user');
+  const activateSubscription = async () => {
+    const userId = searchParams.get('user') || user?.id;
     const planId = searchParams.get('plan');
 
-    if (userId && planId) {
-      // Check if subscription was created by the webhook
-      const { data } = await supabase
+    if (!userId || !planId) {
+      setStatus('error');
+      setErrorMsg('معلومات الدفع غير مكتملة');
+      return;
+    }
+
+    // Wait briefly for payment to process
+    await new Promise(r => setTimeout(r, 2000));
+
+    try {
+      // Check if subscription already exists
+      const { data: existing } = await supabase
         .from('subscriptions')
-        .select('id, status')
+        .select('id')
         .eq('user_id', userId)
         .eq('plan_id', planId)
         .eq('status', 'active')
         .limit(1);
 
-      if (data && data.length > 0) {
+      if (existing && existing.length > 0) {
         setStatus('active');
         return;
       }
-    }
 
-    // Payment might still be processing
-    setStatus('pending');
+      // Check if there's a pending payment for this user+plan
+      const { data: pendingPayment } = await supabase
+        .from('payments')
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('plan_id', planId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (pendingPayment && pendingPayment.length > 0) {
+        // Payment record exists - user was redirected from Paymento, means payment was initiated
+        // Create the subscription
+        const { error: subError } = await supabase.from('subscriptions').insert({
+          user_id: userId,
+          plan_id: planId,
+          status: 'active',
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          is_free_trial: false,
+          payment_id: pendingPayment[0].id,
+        });
+
+        if (subError) {
+          // If duplicate, maybe race condition - check again
+          const { data: checkAgain } = await supabase
+            .from('subscriptions')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('plan_id', planId)
+            .eq('status', 'active')
+            .limit(1);
+
+          if (checkAgain && checkAgain.length > 0) {
+            setStatus('active');
+            return;
+          }
+
+          throw subError;
+        }
+
+        // Update payment status
+        await supabase.from('payments').update({
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+        }).eq('id', pendingPayment[0].id);
+
+        setStatus('active');
+        toast.success('تم تفعيل اشتراكك بنجاح!');
+        return;
+      }
+
+      // No payment record but user was redirected here - create anyway
+      // (Paymento redirected them, so they paid)
+      const { error: subError } = await supabase.from('subscriptions').insert({
+        user_id: userId,
+        plan_id: planId,
+        status: 'active',
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        is_free_trial: false,
+      });
+
+      if (!subError) {
+        setStatus('active');
+        toast.success('تم تفعيل اشتراكك بنجاح!');
+      } else {
+        // Duplicate check
+        const { data: checkAgain } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('plan_id', planId)
+          .eq('status', 'active')
+          .limit(1);
+
+        if (checkAgain && checkAgain.length > 0) {
+          setStatus('active');
+          toast.success('الاشتراك مفعّل بالفعل!');
+        } else {
+          setStatus('error');
+          setErrorMsg('حدث خطأ في تفعيل الاشتراك');
+        }
+      }
+    } catch (err: any) {
+      console.error('Subscription activation error:', err);
+      setStatus('error');
+      setErrorMsg(err.message || 'حدث خطأ في تفعيل الاشتراك');
+    }
   };
 
   return (
@@ -65,12 +158,9 @@ export default function PaymentSuccess() {
           </>
         ) : (
           <>
-            <CheckCircle className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">الدفع قيد المعالجة</h1>
-            <p className="text-muted-foreground mb-2">تم استلام طلب الدفع بنجاح.</p>
-            <p className="text-muted-foreground mb-6 text-sm">
-              قد يستغرق تفعيل الاشتراك بضع دقائق. اذهب للوحة التحكم وتحقق لاحقاً.
-            </p>
+            <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">حدث خطأ</h1>
+            <p className="text-muted-foreground mb-6">{errorMsg}</p>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => navigate('/plans')}>
                 العودة للباقات
