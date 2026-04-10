@@ -12,6 +12,8 @@ import { toast } from 'sonner';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 import {
   Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
   Eye, EyeOff, Copy, Download, RotateCcw,
@@ -90,12 +92,17 @@ function CodeEditor({ value, onChange, language, wordWrap }: {
   language: string;
   wordWrap: boolean;
 }) {
+  const extensions = [
+    getCodeMirrorLang(language),
+    oneDark,
+    wordWrap ? EditorView.lineWrapping : [],
+  ];
+
   return (
     <CodeMirror
       value={value}
       onChange={onChange}
-      extensions={[getCodeMirrorLang(language)]}
-      theme="dark"
+      extensions={extensions}
       basicSetup={{
         lineNumbers: true,
         highlightActiveLineGutter: true,
@@ -110,7 +117,6 @@ function CodeEditor({ value, onChange, language, wordWrap }: {
       style={{
         height: '100%',
         fontSize: '13px',
-        backgroundColor: '#0d0d0d',
       }}
       className="cm-editor-wrapper"
       editable={true}
