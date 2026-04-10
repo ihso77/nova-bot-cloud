@@ -92,61 +92,63 @@ export default function Dashboard() {
       <div className="container mx-auto max-w-5xl">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold gradient-text">مشاريعي</h1>
-          {subscriptions.length > 0 && (() => {
-            // Pick the best subscription (paid first, then free) for the "new project" button
-            const sorted = [...subscriptions].sort((a, b) => (b.plans?.price || 0) - (a.plans?.price || 0));
-            return (
-              <Link to={`/dashboard/new-project?plan=${sorted[0].plan_id}`}>
+          {subscriptions.length > 0 && (
+              <Link to="/dashboard/new-project">
                 <Button className="gradient-bg text-primary-foreground">
                   <Plus className="w-4 h-4 ml-2" /> مشروع جديد
                 </Button>
               </Link>
-            );
-          })()}
+          )}
         </motion.div>
 
-        {/* Active Subscriptions */}
-        {subscriptions.length > 0 && (
-          <div className="mb-8 space-y-3">
-            {subscriptions.map(sub => {
-              const storageLimit = sub.plans?.storage_mb || 512;
-              const storageLimitBytes = storageLimit * 1024 * 1024;
-              const totalStorage = Object.values(projectStorage).reduce((a, b) => a + b, 0);
-              const storagePct = Math.min(100, (totalStorage / storageLimitBytes) * 100);
-              const isNearLimit = storagePct > 85;
-              return (
-                <div key={sub.id} className="glass rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-semibold">{sub.plans?.name}</span>
-                      {sub.is_free_trial && <Badge className="mr-2 bg-success/20 text-success">تجريبية</Badge>}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}
-                    </div>
+        {/* Active Subscriptions - show best plan storage */}
+        {subscriptions.length > 0 && (() => {
+          // Pick the best subscription (highest price = highest tier)
+          const sorted = [...subscriptions].sort((a, b) => (b.plans?.price || 0) - (a.plans?.price || 0));
+          const bestSub = sorted[0];
+          const storageLimit = bestSub.plans?.storage_mb || 512;
+          const storageLimitBytes = storageLimit * 1024 * 1024;
+          const totalStorage = Object.values(projectStorage).reduce((a, b) => a + b, 0);
+          const storagePct = Math.min(100, (totalStorage / storageLimitBytes) * 100);
+          const isNearLimit = storagePct > 85;
+          return (
+            <div className="mb-8 space-y-3">
+              {subscriptions.map(sub => (
+                <div key={sub.id} className="glass rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{sub.plans?.name}</span>
+                    {sub.is_free_trial && <Badge className="bg-success/20 text-success">تجريبية</Badge>}
                   </div>
-                  {/* Storage bar */}
-                  <div className="flex items-center gap-3 text-xs">
-                    <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
-                    <div className="flex-1">
-                      <div className="flex justify-between mb-1 text-muted-foreground">
-                        <span>التخزين المستخدم</span>
-                        <span className={isNearLimit ? 'text-yellow-400 font-medium' : ''}>{formatBytes(totalStorage)} / {formatBytes(storageLimitBytes)}</span>
-                      </div>
-                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
-                          style={{ width: `${storagePct}%` }}
-                        />
-                      </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}
+                  </div>
+                </div>
+              ))}
+              {/* Storage bar using BEST plan limits */}
+              <div className="glass rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">التخزين (باقة {bestSub.plans?.name})</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1 text-muted-foreground">
+                      <span>التخزين المستخدم</span>
+                      <span className={isNearLimit ? 'text-yellow-400 font-medium' : ''}>{formatBytes(totalStorage)} / {formatBytes(storageLimitBytes)}</span>
+                    </div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                        style={{ width: `${storagePct}%` }}
+                      />
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+            </div>
+          );
+        })()}
 
         {subscriptions.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center mb-8">
@@ -162,10 +164,7 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center">
             <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">لا توجد مشاريع بعد</p>
-            <Link to={(() => {
-              const sorted = [...subscriptions].sort((a, b) => (b.plans?.price || 0) - (a.plans?.price || 0));
-              return `/dashboard/new-project?plan=${sorted[0].plan_id}`;
-            })()}>
+            <Link to="/dashboard/new-project">
               <Button className="gradient-bg text-primary-foreground">
                 <Plus className="w-4 h-4 ml-2" /> أنشئ أول مشروع
               </Button>

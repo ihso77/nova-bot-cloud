@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,90 +31,84 @@ function parseMaxProjects(features: any): number {
   return 1;
 }
 
+interface BestSub {
+  subId: string;
+  planName: string;
+  maxProjects: number;
+  storageMb: number;
+}
+
 export default function NewProject() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const planId = searchParams.get('plan');
 
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('javascript');
   const [loading, setLoading] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ name: string; maxProjects: number; usedProjects: number } | null>(null);
+  const [bestSub, setBestSub] = useState<BestSub | null>(null);
+  const [usedProjects, setUsedProjects] = useState(0);
 
-  // Load plan info on mount
+  // Find the BEST active subscription (highest sort_order / price) on mount
   useEffect(() => {
-    if (!user || !planId) return;
+    if (!user) return;
     (async () => {
-      const { data: plan } = await supabase.from('plans').select('*').eq('id', planId).single();
-      if (plan) {
-        // Count projects linked to subscriptions of THIS plan only
-        const { data: subIds } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('user_id', user!.id)
-          .eq('plan_id', planId)
-          .eq('status', 'active');
-        let count = 0;
-        if (subIds && subIds.length > 0) {
-          const ids = subIds.map(s => s.id);
-          const { count: projCount } = await supabase
-            .from('projects')
-            .select('id', { count: 'exact', head: true })
-            .in('subscription_id', ids);
-          count = projCount || 0;
-        }
-        setPlanInfo({
-          name: plan.name,
-          maxProjects: parseMaxProjects(plan.features),
-          usedProjects: count,
-        });
+      // Get ALL active subscriptions with their plan details (sort_order determines tier)
+      const { data: allSubs } = await supabase
+        .from('subscriptions')
+        .select('id, plan_id, plans!inner(id, name, features, storage_mb, sort_order, price)')
+        .eq('user_id', user!.id)
+        .eq('status', 'active');
+
+      if (!allSubs || allSubs.length === 0) {
+        toast.error('لا يوجد اشتراك فعال');
+        navigate('/plans');
+        return;
       }
-    })();
-  }, [user, planId]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !planId) return;
-    setLoading(true);
+      // Sort by sort_order desc (highest tier first), then by price desc
+      const sorted = [...allSubs].sort((a, b) => {
+        const planA = (a as any).plans;
+        const planB = (b as any).plans;
+        if (planB.sort_order !== planA.sort_order) return planB.sort_order - planA.sort_order;
+        return planB.price - planA.price;
+      });
 
-    // Get active subscription for this plan
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('id, plan_id')
-      .eq('user_id', user.id)
-      .eq('plan_id', planId)
-      .eq('status', 'active')
-      .maybeSingle();
+      const topSub = sorted[0];
+      const topPlan = (topSub as any).plans;
 
-    if (!sub) {
-      toast.error('لا يوجد اشتراك فعال لهذه الباقة');
-      setLoading(false);
-      return;
-    }
-
-    // Check project count limit - only count projects under THIS subscription's plan
-    const { data: planData } = await supabase.from('plans').select('features').eq('id', sub.plan_id).single();
-    const maxProjects = planData ? parseMaxProjects(planData.features) : 1;
-    // Get all subscription IDs for this same plan
-    const { data: samePlanSubs } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('plan_id', sub.plan_id)
-      .eq('status', 'active');
-    let usedProjects = 0;
-    if (samePlanSubs && samePlanSubs.length > 0) {
-      const subIds = samePlanSubs.map(s => s.id);
+      // Count ALL projects across ALL active subscriptions
+      const allSubIds = allSubs.map(s => s.id);
       const { count: projCount } = await supabase
         .from('projects')
         .select('id', { count: 'exact', head: true })
-        .in('subscription_id', subIds);
-      usedProjects = projCount || 0;
-    }
+        .eq('user_id', user!.id);
+        // Count all user projects regardless of subscription
 
-    if (usedProjects >= maxProjects) {
-      toast.error(`وصلت لحد المشاريع! (${usedProjects}/${maxProjects === Infinity ? '∞' : maxProjects})`);
+      setBestSub({
+        subId: topSub.id,
+        planName: topPlan.name,
+        maxProjects: parseMaxProjects(topPlan.features),
+        storageMb: topPlan.storage_mb,
+      });
+      setUsedProjects(projCount || 0);
+    })();
+  }, [user, navigate]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !bestSub) return;
+    setLoading(true);
+
+    // Re-check: count all user projects vs best plan limit
+    const { count: totalProjects } = await supabase
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    const currentCount = totalProjects || 0;
+
+    if (currentCount >= bestSub.maxProjects) {
+      toast.error(`وصلت لحد المشاريع! (${currentCount}/${bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects})`);
       setLoading(false);
       return;
     }
@@ -123,7 +117,7 @@ export default function NewProject() {
       .from('projects')
       .insert({
         user_id: user.id,
-        subscription_id: sub.id,
+        subscription_id: bestSub.subId,
         name: name.trim(),
         language,
       })
@@ -158,27 +152,27 @@ export default function NewProject() {
           <h1 className="text-2xl font-bold gradient-text mb-6 text-center">مشروع جديد</h1>
 
           {/* Plan info & limits */}
-          {planInfo && (
+          {bestSub && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               className={`rounded-xl p-4 mb-6 flex items-center gap-3 ${
-                planInfo.usedProjects >= planInfo.maxProjects
+                usedProjects >= bestSub.maxProjects
                   ? 'bg-red-500/10 border border-red-500/20'
                   : 'bg-secondary/50 border border-border/30'
               }`}
             >
-              {planInfo.usedProjects >= planInfo.maxProjects ? (
+              {usedProjects >= bestSub.maxProjects ? (
                 <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               ) : (
                 <Server className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <div className="text-sm">
-                <span className="text-muted-foreground">باقة {planInfo.name} — </span>
-                <span className={planInfo.usedProjects >= planInfo.maxProjects ? 'text-red-400 font-medium' : 'text-foreground'}>
-                  {planInfo.usedProjects}/{planInfo.maxProjects === Infinity ? '∞' : planInfo.maxProjects} مشاريع مستخدمة
+                <span className="text-muted-foreground">أفضل باقة ({bestSub.planName}) — </span>
+                <span className={usedProjects >= bestSub.maxProjects ? 'text-red-400 font-medium' : 'text-foreground'}>
+                  {usedProjects}/{bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects} مشاريع مستخدمة
                 </span>
-                {planInfo.usedProjects >= planInfo.maxProjects && (
+                {usedProjects >= bestSub.maxProjects && (
                   <p className="text-red-400 text-xs mt-0.5">وصلت للحد الأقصى! قم بترقية باقتك لإنشاء مشاريع إضافية.</p>
                 )}
               </div>
@@ -220,7 +214,7 @@ export default function NewProject() {
               </div>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full gradient-bg text-primary-foreground">
+            <Button type="submit" disabled={loading || !bestSub} className="w-full gradient-bg text-primary-foreground">
               {loading ? 'جاري الإنشاء...' : 'إنشاء المشروع'}
             </Button>
           </form>

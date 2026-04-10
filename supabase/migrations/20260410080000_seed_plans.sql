@@ -15,7 +15,7 @@ INSERT INTO public.plans (name, description, price, storage_mb, ram_mb, cpu_core
 (
   'أساسي',
   'للبوتات الصغيرة والوسطى',
-  2.99,
+  0.99,
   1024,
   512,
   1.0,
@@ -27,7 +27,7 @@ INSERT INTO public.plans (name, description, price, storage_mb, ram_mb, cpu_core
 (
   'احترافي',
   'الأكثر طلباً - الأفضل قيمة',
-  5.99,
+  2.49,
   2048,
   1024,
   2.0,
@@ -39,7 +39,7 @@ INSERT INTO public.plans (name, description, price, storage_mb, ram_mb, cpu_core
 (
   'مؤسسي',
   'للخدمات الكبيرة والاحترافية',
-  12.99,
+  4.99,
   5120,
   2048,
   4.0,

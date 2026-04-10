@@ -219,26 +219,35 @@ export default function ProjectEditor() {
     if (data) {
       setProject(data);
       setProjectName(data.name);
-      // Load plan limits for this project
-      if (data.subscription_id) {
-        const { data: sub } = await supabase.from('subscriptions').select('plan_id').eq('id', data.subscription_id).single();
-        if (sub) {
-          const { data: plan } = await supabase.from('plans').select('*').eq('id', sub.plan_id).single();
-          if (plan) {
-            setPlanLimits({
-              storage_mb: plan.storage_mb,
-              max_projects: parseMaxProjects(plan.features),
-              plan_name: plan.name,
-            });
-          }
-        }
-      }
     }
   };
 
   const loadPlanLimits = async () => {
-    if (!user || !project) return;
-    // Already loaded in loadProject, but also handle if project doesn't have subscription yet
+    if (!user || !id) return;
+    // Load the BEST active subscription's plan limits (highest tier)
+    const { data: allSubs } = await supabase
+      .from('subscriptions')
+      .select('id, plans!inner(id, name, features, storage_mb, sort_order, price)')
+      .eq('user_id', user!.id)
+      .eq('status', 'active');
+
+    if (allSubs && allSubs.length > 0) {
+      // Sort by sort_order desc, then price desc to find the best plan
+      const sorted = [...allSubs].sort((a, b) => {
+        const planA = (a as any).plans;
+        const planB = (b as any).plans;
+        if (planB.sort_order !== planA.sort_order) return planB.sort_order - planA.sort_order;
+        return planB.price - planA.price;
+      });
+      const topPlan = (sorted[0] as any).plans;
+      if (topPlan) {
+        setPlanLimits({
+          storage_mb: topPlan.storage_mb,
+          max_projects: parseMaxProjects(topPlan.features),
+          plan_name: topPlan.name,
+        });
+      }
+    }
   };
 
   const loadFiles = async () => {
