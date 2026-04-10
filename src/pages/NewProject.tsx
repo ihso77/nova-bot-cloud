@@ -48,11 +48,26 @@ export default function NewProject() {
     (async () => {
       const { data: plan } = await supabase.from('plans').select('*').eq('id', planId).single();
       if (plan) {
-        const { count } = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', user!.id);
+        // Count projects linked to subscriptions of THIS plan only
+        const { data: subIds } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', user!.id)
+          .eq('plan_id', planId)
+          .eq('status', 'active');
+        let count = 0;
+        if (subIds && subIds.length > 0) {
+          const ids = subIds.map(s => s.id);
+          const { count: projCount } = await supabase
+            .from('projects')
+            .select('id', { count: 'exact', head: true })
+            .in('subscription_id', ids);
+          count = projCount || 0;
+        }
         setPlanInfo({
           name: plan.name,
           maxProjects: parseMaxProjects(plan.features),
-          usedProjects: count || 0,
+          usedProjects: count,
         });
       }
     })();
@@ -78,11 +93,25 @@ export default function NewProject() {
       return;
     }
 
-    // Check project count limit
-    const { count: projectCount } = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+    // Check project count limit - only count projects under THIS subscription's plan
     const { data: planData } = await supabase.from('plans').select('features').eq('id', sub.plan_id).single();
     const maxProjects = planData ? parseMaxProjects(planData.features) : 1;
-    const usedProjects = projectCount || 0;
+    // Get all subscription IDs for this same plan
+    const { data: samePlanSubs } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('plan_id', sub.plan_id)
+      .eq('status', 'active');
+    let usedProjects = 0;
+    if (samePlanSubs && samePlanSubs.length > 0) {
+      const subIds = samePlanSubs.map(s => s.id);
+      const { count: projCount } = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .in('subscription_id', subIds);
+      usedProjects = projCount || 0;
+    }
 
     if (usedProjects >= maxProjects) {
       toast.error(`وصلت لحد المشاريع! (${usedProjects}/${maxProjects === Infinity ? '∞' : maxProjects})`);

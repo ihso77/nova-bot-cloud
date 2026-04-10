@@ -92,13 +92,17 @@ export default function Dashboard() {
       <div className="container mx-auto max-w-5xl">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold gradient-text">مشاريعي</h1>
-          {subscriptions.length > 0 && (
-            <Link to={`/dashboard/new-project?plan=${subscriptions[0].plan_id}`}>
-              <Button className="gradient-bg text-primary-foreground">
-                <Plus className="w-4 h-4 ml-2" /> مشروع جديد
-              </Button>
-            </Link>
-          )}
+          {subscriptions.length > 0 && (() => {
+            // Pick the best subscription (paid first, then free) for the "new project" button
+            const sorted = [...subscriptions].sort((a, b) => (b.plans?.price || 0) - (a.plans?.price || 0));
+            return (
+              <Link to={`/dashboard/new-project?plan=${sorted[0].plan_id}`}>
+                <Button className="gradient-bg text-primary-foreground">
+                  <Plus className="w-4 h-4 ml-2" /> مشروع جديد
+                </Button>
+              </Link>
+            );
+          })()}
         </motion.div>
 
         {/* Active Subscriptions */}
@@ -158,7 +162,10 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center">
             <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">لا توجد مشاريع بعد</p>
-            <Link to={`/dashboard/new-project?plan=${subscriptions[0].plan_id}`}>
+            <Link to={(() => {
+              const sorted = [...subscriptions].sort((a, b) => (b.plans?.price || 0) - (a.plans?.price || 0));
+              return `/dashboard/new-project?plan=${sorted[0].plan_id}`;
+            })()}>
               <Button className="gradient-bg text-primary-foreground">
                 <Plus className="w-4 h-4 ml-2" /> أنشئ أول مشروع
               </Button>
