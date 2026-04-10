@@ -1,14 +1,21 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
-  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3, Key, Eye, EyeOff,
+  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
+  Eye, EyeOff, Copy, Download, RotateCcw, ChevronDown, ChevronUp,
+  AlertCircle, CheckCircle2, Loader2, Code2, Zap, FileCode2, FolderOpen,
+  Timer, Activity, Shield,
 } from 'lucide-react';
 
 const PROXY_URL = 'https://proxy-production-a7b5.up.railway.app';
@@ -28,6 +35,59 @@ interface Project {
   railway_service_id: string | null;
 }
 
+interface ConsoleLog {
+  id: string;
+  type: string;
+  text: string;
+  time: string;
+}
+
+function extractToken(code: string, language: string): string | null {
+  if (language === 'python') {
+    const m = code.match(/bot\.run\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+    if (m) return m[1];
+    const m2 = code.match(/['"`]([^'"`]{50,})['"`]/);
+    return m2 ? m2[1] : null;
+  }
+  // JS/TS - look for client.login, bot.login
+  const patterns = [
+    /\.login\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/,
+    /\.login\s*\(\s*(['"`])([^'"`]+)\1\s*\)/,
+    /token\s*[:=]\s*['"`]([^'"`]{50,})['"`]/,
+    /TOKEN\s*[:=]\s*['"`]([^'"`]{50,})['"`]/,
+    /['"`]([A-Za-z0-9._-]{50,}\.[A-Za-z0-9_-]{20,})['"`]/,
+  ];
+  for (const p of patterns) {
+    const m = code.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function getFileIcon(name: string) {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const colors: Record<string, string> = {
+    js: 'text-yellow-400', ts: 'text-blue-400', py: 'text-green-400',
+    json: 'text-yellow-500', md: 'text-gray-400', txt: 'text-gray-300',
+    env: 'text-orange-400', yml: 'text-pink-400', yaml: 'text-pink-400',
+  };
+  return colors[ext || ''] || 'text-gray-400';
+}
+
+function getSyntaxLang(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    js: 'javascript', ts: 'typescript', py: 'python', json: 'json',
+    yml: 'yaml', yaml: 'yaml', md: 'markdown', txt: 'text', env: 'bash',
+    sh: 'bash', html: 'html', css: 'css',
+  };
+  return map[ext || ''] || 'text';
+}
+
+function lineCount(s: string): number {
+  return s ? s.split('\n').length : 1;
+}
+
 export default function ProjectEditor() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -36,24 +96,26 @@ export default function ProjectEditor() {
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const [editorContent, setEditorContent] = useState('');
   const [showConsole, setShowConsole] = useState(true);
-  const [consoleLogs, setConsoleLogs] = useState<{ type: string; text: string; time: string }[]>([]);
+  const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
   const [newFileName, setNewFileName] = useState('');
   const [showNewFile, setShowNewFile] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [projectName, setProjectName] = useState('');
-  const [botToken, setBotToken] = useState('');
-  const [showToken, setShowToken] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
+  const [deployProgress, setDeployProgress] = useState(0);
+  const [deployStatus, setDeployStatus] = useState('');
   const [showTokenDialog, setShowTokenDialog] = useState(false);
+  const [manualToken, setManualToken] = useState('');
+  const [showManualToken, setShowManualToken] = useState(false);
+  const [consoleHeight, setConsoleHeight] = useState(200);
+  const [isDraggingConsole, setIsDraggingConsole] = useState(false);
+  const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [wordWrap, setWordWrap] = useState(false);
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (id) {
-      const savedToken = localStorage.getItem(`bot_token_${id}`);
-      if (savedToken) setBotToken(savedToken);
-    }
-  }, [id]);
+  const dragStartY = useRef(0);
+  const dragStartH = useRef(0);
+  const logIdRef = useRef(0);
 
   useEffect(() => {
     if (!id || !user) return;
@@ -64,6 +126,18 @@ export default function ProjectEditor() {
   useEffect(() => {
     if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
   }, [consoleLogs]);
+
+  // Detect token from code
+  const detectedToken = selectedFile ? extractToken(editorContent || '', project?.language || '') : null;
+
+  // Auto-save indicator
+  useEffect(() => {
+    if (selectedFile && editorContent !== selectedFile.content) {
+      setHasUnsaved(true);
+    } else {
+      setHasUnsaved(false);
+    }
+  }, [editorContent, selectedFile]);
 
   const loadProject = async () => {
     const { data } = await supabase.from('projects').select('*').eq('id', id!).single();
@@ -91,47 +165,101 @@ export default function ProjectEditor() {
       .update({ content: editorContent })
       .eq('id', selectedFile.id);
     if (error) toast.error('خطأ في الحفظ');
-    else toast.success('تم الحفظ');
+    else {
+      toast.success('تم الحفظ');
+      setHasUnsaved(false);
+      setSelectedFile(prev => prev ? { ...prev, content: editorContent } : null);
+    }
   };
 
-  const addLog = (type: string, text: string) => {
-    setConsoleLogs(prev => [...prev, { type, text, time: new Date().toLocaleTimeString('ar-SA') }]);
-  };
+  const addLog = useCallback((type: string, text: string) => {
+    logIdRef.current++;
+    setConsoleLogs(prev => [...prev, { id: String(logIdRef.current), type, text, time: new Date().toLocaleTimeString('ar-SA') }]);
+  }, []);
+
+  const pollDeployStatus = useCallback(async (serviceId: string) => {
+    const maxAttempts = 30;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      setDeployProgress(Math.min(90, ((i + 1) / maxAttempts) * 100));
+
+      try {
+        const res = await fetch(`${PROXY_URL}/status?serviceId=${serviceId}`);
+        const data = await res.json();
+
+        if (data.status === 'SUCCESS') {
+          setDeployProgress(100);
+          addLog('success', '✅ تم تشغيل البوت بنجاح!');
+          if (data.logs?.length) {
+            for (const l of data.logs) {
+              if (l.severity === 'error') addLog('error', l.message);
+              else addLog('info', l.message);
+            }
+          }
+          addLog('info', '🤖 البوت جاهز للاستخدام في Discord');
+          return 'SUCCESS';
+        }
+
+        if (data.status === 'CRASHED') {
+          addLog('error', '❌ فشل تشغيل البوت');
+          if (data.logs?.length) {
+            addLog('info', '📋 تفاصيل الخطأ:');
+            for (const l of data.logs) {
+              addLog(l.severity === 'error' ? 'error' : 'warning', `  ${l.message}`);
+            }
+          }
+          return 'CRASHED';
+        }
+
+        if (data.status === 'BUILDING' || data.status === 'DEPLOYING') {
+          setDeployStatus(i < 3 ? 'جاري بناء الصورة...' : i < 6 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...');
+        }
+      } catch {
+        // network error - continue polling
+      }
+    }
+    addLog('warning', '⏰ استغرقت العملية وقتاً طويلاً، تحقق من حالة البوت لاحقاً');
+    return 'TIMEOUT';
+  }, [addLog]);
 
   const handleStartBot = async () => {
     if (!project || !user) return;
 
-    if (!botToken.trim()) {
+    // Try to get token from code first
+    const allFilesContent = files.map(f => f.content || '').join('\n');
+    const codeToken = extractToken(allFilesContent, project.language);
+
+    if (!codeToken && !manualToken.trim()) {
       setShowTokenDialog(true);
-      toast.error('يجب إدخال توكن Discord البوت أولاً');
+      toast.error('لم يتم العثور على توكن في الكود، أدخل التوكن يدوياً');
       return;
     }
 
-    if (botToken.trim() === 'YOUR_TOKEN' || botToken.trim().length < 50) {
+    const botToken = codeToken || manualToken.trim();
+
+    if (botToken.length < 50) {
       setShowTokenDialog(true);
       toast.error('توكن Discord غير صالح');
       return;
     }
 
     setIsDeploying(true);
-    addLog('info', '🚀 جاري تشغيل البوت...');
+    setDeployProgress(0);
+    setDeployStatus('جاري التحضير...');
 
-    // Save current file
-    if (selectedFile) {
-      await supabase
-        .from('project_files')
-        .update({ content: editorContent })
-        .eq('id', selectedFile.id);
+    addLog('info', '🚀 جاري بدء النشر...');
+
+    // Auto-save current file
+    if (selectedFile && hasUnsaved) {
+      await supabase.from('project_files').update({ content: editorContent }).eq('id', selectedFile.id);
+      addLog('info', '💾 تم حفظ الملفات تلقائياً');
     }
-    addLog('info', '💾 تم حفظ الملفات');
 
-    // Update status
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
     setProject(prev => prev ? { ...prev, status: 'deploying' } : null);
-    addLog('info', '📦 جاري النشر على Railway...');
 
     try {
-      // Load all project files
+      // Reload all files from DB to get latest
       const { data: allFiles } = await supabase
         .from('project_files')
         .select('file_name, content')
@@ -145,7 +273,6 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Get the main file
       const mainFile = allFiles.find(f =>
         f.file_name === 'index.js' || f.file_name === 'index.ts' ||
         f.file_name === 'bot.py' || f.file_name === 'main.py' ||
@@ -160,99 +287,106 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Send code as-is - the proxy handles YOUR_TOKEN replacement with proper quote preservation
       const code = mainFile.content || '';
 
-      addLog('info', '📡 جاري إنشاء خدمة على Railway...');
+      setDeployProgress(10);
+      setDeployStatus('جاري الاتصال بالخادم...');
 
-      // Call the proxy to deploy
       const proxyRes = await fetch(`${PROXY_URL}/deploy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           botName: project.name,
-          botToken: botToken.trim(),
+          botToken,
           language: project.language,
           code,
         }),
+        signal: AbortSignal.timeout(30000),
       });
 
       const proxyData = await proxyRes.json();
 
       if (!proxyRes.ok || proxyData.error) {
-        addLog('error', `❌ خطأ في النشر: ${proxyData.error || 'خطأ غير معروف'}`);
+        addLog('error', `❌ خطأ: ${proxyData.error || 'خطأ غير معروف'}`);
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
-      } else {
-        // Save the railway service ID
-        const serviceId = proxyData.serviceId;
-        if (serviceId) {
-          await supabase.from('projects').update({
-            status: 'running',
-            railway_service_id: serviceId,
-          }).eq('id', project.id);
-          setProject(prev => prev ? { ...prev, status: 'running', railway_service_id: serviceId } : null);
-        } else {
+        setIsDeploying(false);
+        return;
+      }
+
+      const serviceId = proxyData.serviceId;
+      setDeployProgress(30);
+      setDeployStatus('جاري بناء البوت...');
+
+      if (serviceId) {
+        await supabase.from('projects').update({ railway_service_id: serviceId }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, railway_service_id: serviceId } : null);
+
+        const result = await pollDeployStatus(serviceId);
+
+        if (result === 'SUCCESS') {
           await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
           setProject(prev => prev ? { ...prev, status: 'running' } : null);
+        } else {
+          await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+          setProject(prev => prev ? { ...prev, status: 'error' } : null);
         }
-
-        addLog('success', '✅ البوت يعمل الآن على Railway!');
-        addLog('info', `📡 اللغة: ${project.language}`);
-        addLog('info', `🚂 Service ID: ${serviceId || 'N/A'}`);
-        addLog('info', '🤖 يمكنك اختبار البوت في سيرفر Discord');
       }
     } catch (err: any) {
-      addLog('error', `❌ خطأ في الاتصال: ${err.message}`);
+      addLog('error', `❌ خطأ: ${err.message}`);
       await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'error' } : null);
     }
 
     setIsDeploying(false);
+    setDeployProgress(0);
+    setDeployStatus('');
   };
 
   const handleStopBot = async () => {
     if (!project || !user) return;
     addLog('warning', '⏹️ جاري إيقاف البوت...');
+    setIsDeploying(true);
 
     try {
       if (project.railway_service_id) {
-        addLog('info', '📡 جاري إيقاف الخدمة على Railway...');
         const proxyRes = await fetch(`${PROXY_URL}/stop`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ serviceId: project.railway_service_id }),
+          signal: AbortSignal.timeout(15000),
         });
 
         if (proxyRes.ok) {
-          addLog('success', '✅ تم إيقاف البوت على Railway');
+          addLog('success', '✅ تم إيقاف البوت');
         } else {
           addLog('warning', '⚠️ حدث خطأ أثناء الإيقاف');
         }
+      } else {
+        addLog('success', '✅ تم إيقاف البوت');
       }
 
       await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'stopped', railway_service_id: null } : null);
-      addLog('success', '✅ تم إيقاف البوت بنجاح');
     } catch (err: any) {
-      await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
-      setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
-      addLog('warning', '⚠️ تم الإيقاف محلياً');
+      await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'stopped', railway_service_id: null } : null);
+      addLog('success', '✅ تم إيقاف البوت');
     }
+    setIsDeploying(false);
   };
 
-  const handleSaveToken = () => {
-    if (!botToken.trim()) {
+  const handleSaveManualToken = () => {
+    if (!manualToken.trim()) {
       toast.error('الرجاء إدخال التوكن');
       return;
     }
-    if (botToken.trim().length < 50) {
+    if (manualToken.trim().length < 50) {
       toast.error('توكن Discord غير صالح');
       return;
     }
-    localStorage.setItem(`bot_token_${id}`, botToken.trim());
     setShowTokenDialog(false);
-    toast.success('تم حفظ التوكن بأمان');
+    toast.success('تم حفظ التوكن');
   };
 
   const createFile = async () => {
@@ -311,6 +445,92 @@ export default function ProjectEditor() {
     toast.success('تم تحديث الاسم');
   };
 
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(editorContent);
+    toast.success('تم نسخ الكود');
+  };
+
+  const handleDownloadFile = () => {
+    if (!selectedFile) return;
+    const blob = new Blob([editorContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = selectedFile.file_name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadProject = async () => {
+    const { data: allFiles } = await supabase.from('project_files').select('file_name, content').eq('project_id', id!);
+    if (!allFiles?.length) return;
+
+    if (allFiles.length === 1) {
+      const blob = new Blob([allFiles[0].content || ''], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = allFiles[0].file_name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // Create simple zip-like text
+      const content = allFiles.map(f => `===== ${f.file_name} =====\n${f.content || ''}`).join('\n\n');
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project?.name || 'project'}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    toast.success('تم تحميل المشروع');
+  };
+
+  const handleFormatCode = () => {
+    // Basic JS/Python formatting (trim trailing spaces, normalize line endings)
+    const formatted = editorContent
+      .split('\n')
+      .map(l => l.trimEnd())
+      .join('\n')
+      .replace(/\n{4,}/g, '\n\n\n');
+    setEditorContent(formatted);
+    toast.success('تم تنسيق الكود');
+  };
+
+  // Console resize
+  const handleConsoleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingConsole(true);
+    dragStartY.current = e.clientY;
+    dragStartH.current = consoleHeight;
+  };
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!isDraggingConsole) return;
+      const diff = dragStartY.current - e.clientY;
+      const newH = Math.max(100, Math.min(500, dragStartH.current + diff));
+      setConsoleHeight(newH);
+    };
+    const onUp = () => setIsDraggingConsole(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [isDraggingConsole]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedFile, editorContent]);
+
   const logColors: Record<string, string> = {
     info: 'text-blue-400',
     success: 'text-green-400',
@@ -318,70 +538,112 @@ export default function ProjectEditor() {
     error: 'text-red-400',
   };
 
+  const logIcons: Record<string, typeof Terminal> = {
+    info: Terminal,
+    success: CheckCircle2,
+    warning: AlertCircle,
+    error: AlertCircle,
+  };
+
+  const statusBadge = (() => {
+    if (isDeploying) return { color: 'text-yellow-400 bg-yellow-400/10', label: deployStatus || 'جاري النشر...' };
+    if (project?.status === 'running') return { color: 'text-green-400 bg-green-400/10', label: 'يعمل' };
+    if (project?.status === 'error') return { color: 'text-red-400 bg-red-400/10', label: 'خطأ' };
+    return { color: 'text-gray-400 bg-gray-400/10', label: 'متوقف' };
+  })();
+
   if (!project) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="h-screen pt-16 flex flex-col" dir="rtl">
-      {/* Toolbar */}
+      {/* Top Toolbar */}
       <div className="glass border-b border-border/30 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {editingName ? (
             <div className="flex items-center gap-2">
-              <Input value={projectName} onChange={e => setProjectName(e.target.value)} className="h-8 w-48 bg-secondary" />
+              <Input value={projectName} onChange={e => setProjectName(e.target.value)} className="h-8 w-48 bg-secondary" onKeyDown={e => e.key === 'Enter' && updateProjectName()} />
               <Button size="sm" variant="ghost" onClick={updateProjectName}><Save className="w-4 h-4" /></Button>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}><X className="w-4 h-4" /></Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-primary" />
               <h2 className="font-bold">{project.name}</h2>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(true)}><Edit3 className="w-3 h-3" /></Button>
             </div>
           )}
-          <Badge variant="secondary">{project.language}</Badge>
-          <div className={`w-2 h-2 rounded-full ${
-            project.status === 'running' ? 'bg-success animate-pulse' :
-            project.status === 'deploying' ? 'bg-warning animate-pulse' :
-            project.status === 'error' ? 'bg-destructive' : 'bg-muted-foreground'
-          }`} />
+          <Badge variant="secondary" className="gap-1">
+            <Code2 className="w-3 h-3" />
+            {project.language}
+          </Badge>
+          <Badge variant="outline" className={statusBadge.color}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isDeploying ? 'bg-yellow-400 animate-pulse' : project.status === 'running' ? 'bg-green-400' : project.status === 'error' ? 'bg-red-400' : 'bg-gray-400'}`} />
+            {statusBadge.label}
+          </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setShowTokenDialog(true)} className={botToken ? 'text-success' : 'text-destructive'}>
-            <Key className="w-4 h-4 ml-1" />
-            {botToken ? 'توكن محفوظ ✓' : 'أدخل التوكن'}
-          </Button>
-
-          <Button size="sm" variant="ghost" onClick={() => setShowConsole(!showConsole)}>
-            <Terminal className="w-4 h-4" />
-          </Button>
-          {project.status === 'running' ? (
-            <Button size="sm" variant="destructive" onClick={handleStopBot}>
-              <Square className="w-4 h-4 ml-1" /> إيقاف
+        <div className="flex items-center gap-1.5">
+          {/* Token indicator */}
+          {detectedToken ? (
+            <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1" title="تم العثور على التوكن في الكود">
+              <Shield className="w-3.5 h-3.5" />
+              توكن متوفر
             </Button>
           ) : (
-            <Button size="sm" className="gradient-bg text-primary-foreground" onClick={handleStartBot} disabled={project.status === 'deploying' || isDeploying}>
-              {isDeploying ? (
-                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 ml-1" />
-              )}
-              {project.status === 'deploying' || isDeploying ? 'جاري النشر...' : 'تشغيل'}
+            <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 text-xs gap-1" onClick={() => setShowTokenDialog(true)} title="أدخل التوكن يدوياً">
+              <Shield className="w-3.5 h-3.5" />
+              أدخل التوكن
+            </Button>
+          )}
+
+          <Separator orientation="vertical" className="h-6 mx-1" />
+
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowConsole(!showConsole)} title={showConsole ? 'إخفاء الكونسول' : 'عرض الكونسول'}>
+            <Terminal className="w-4 h-4" />
+          </Button>
+
+          {project.status === 'running' || isDeploying ? (
+            <Button size="sm" variant="destructive" onClick={handleStopBot} disabled={isDeploying} className="gap-1">
+              <Square className="w-4 h-4" /> إيقاف
+            </Button>
+          ) : (
+            <Button size="sm" className="gradient-bg text-primary-foreground gap-1" onClick={handleStartBot}>
+              <Play className="w-4 h-4" /> تشغيل
             </Button>
           )}
         </div>
       </div>
 
+      {/* Deploy Progress Bar */}
+      <AnimatePresence>
+        {isDeploying && deployProgress > 0 && (
+          <motion.div initial={{ height: 0 }} animate={{ height: 32 }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="flex items-center gap-3 px-4 h-8 bg-secondary/30 border-b border-border/30">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+              <span className="text-xs text-muted-foreground">{deployStatus}</span>
+              <div className="flex-1 max-w-xs">
+                <Progress value={deployProgress} className="h-1.5" />
+              </div>
+              <span className="text-xs text-muted-foreground">{Math.round(deployProgress)}%</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 flex overflow-hidden">
         {/* File Explorer */}
         <div className="w-56 glass border-l border-border/30 flex flex-col">
           <div className="p-3 border-b border-border/30 flex items-center justify-between">
-            <span className="text-sm font-semibold">الملفات</span>
-            <div className="flex gap-1">
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowNewFile(true)}>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">الملفات</span>
+            <div className="flex gap-0.5">
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowNewFile(true)} title="ملف جديد">
                 <Plus className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => fileInputRef.current?.click()}>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => fileInputRef.current?.click()} title="استيراد ملف">
                 <Upload className="w-3 h-3" />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleDownloadProject} title="تحميل المشروع">
+                <Download className="w-3 h-3" />
               </Button>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileImport} />
             </div>
@@ -392,89 +654,189 @@ export default function ProjectEditor() {
               <Input
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
-                placeholder="اسم الملف"
+                placeholder="اسم الملف.js"
                 className="h-7 text-xs bg-secondary"
                 onKeyDown={e => e.key === 'Enter' && createFile()}
+                autoFocus
               />
               <Button size="sm" className="h-7 px-2" onClick={createFile}>+</Button>
+              <Button size="sm" variant="ghost" className="h-7 px-1" onClick={() => { setShowNewFile(false); setNewFileName(''); }}>
+                <X className="w-3 h-3" />
+              </Button>
             </div>
           )}
 
           <div className="flex-1 overflow-y-auto">
-            {files.map(file => (
-              <div
-                key={file.id}
-                className={`flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-secondary/50 transition-colors group ${
-                  selectedFile?.id === file.id ? 'bg-primary/10 border-r-2 border-primary' : ''
-                }`}
-                onClick={() => { setSelectedFile(file); setEditorContent(file.content || ''); }}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm truncate">{file.file_name}</span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); deleteFile(file.id); }}
-                >
-                  <Trash2 className="w-3 h-3 text-destructive" />
-                </Button>
+            {files.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">
+                <FileCode2 className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                لا توجد ملفات
               </div>
-            ))}
+            ) : (
+              files.map(file => (
+                <div
+                  key={file.id}
+                  className={`flex items-center justify-between px-3 py-1.5 cursor-pointer transition-colors group ${
+                    selectedFile?.id === file.id ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-secondary/50'
+                  }`}
+                  onClick={() => { setSelectedFile(file); setEditorContent(file.content || ''); }}
+                >
+                  <div className="flex items-center gap-2 truncate min-w-0">
+                    <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${getFileIcon(file.file_name)}`} />
+                    <span className="text-sm truncate">{file.file_name}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                    onClick={(e) => { e.stopPropagation(); deleteFile(file.id); }}
+                  >
+                    <Trash2 className="w-3 h-3 text-destructive" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Stats footer */}
+          <div className="p-2 border-t border-border/30 text-xs text-muted-foreground space-y-0.5">
+            <div className="flex justify-between">
+              <span>{files.length} ملف</span>
+              <span>{selectedFile ? lineCount(editorContent) : 0} سطر</span>
+            </div>
+            <div className="flex justify-between">
+              <span>{editorContent.length} حرف</span>
+              {hasUnsaved && <span className="text-yellow-400">● غير محفوظ</span>}
+            </div>
           </div>
         </div>
 
         {/* Editor + Console */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 relative">
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Editor */}
+          <div className="flex-1 relative min-h-0">
             {selectedFile ? (
               <>
-                <div className="absolute top-2 left-2 z-10">
-                  <Button size="sm" onClick={saveFile} className="gradient-bg text-primary-foreground h-7 text-xs">
-                    <Save className="w-3 h-3 ml-1" /> حفظ
-                  </Button>
+                {/* Editor toolbar */}
+                <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-1.5 bg-background/80 backdrop-blur-sm border-b border-border/30">
+                  <div className="flex items-center gap-2">
+                    <FileText className={`w-3.5 h-3.5 ${getFileIcon(selectedFile.file_name)}`} />
+                    <span className="text-xs font-medium">{selectedFile.file_name}</span>
+                    {hasUnsaved && <span className="text-yellow-400 text-xs">●</span>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={() => setWordWrap(!wordWrap)} title="التفاف النص">
+                      <RotateCcw className="w-3 h-3" />
+                      {wordWrap ? 'لف' : 'عادي'}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleFormatCode} title="تنسيق الكود">
+                      <Code2 className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleCopyCode} title="نسخ">
+                      <Copy className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleDownloadFile} title="تحميل">
+                      <Download className="w-3 h-3" />
+                    </Button>
+                    <Separator orientation="vertical" className="h-4" />
+                    <Button size="sm" onClick={saveFile} className="gradient-bg text-primary-foreground h-6 text-xs px-3 gap-1">
+                      <Save className="w-3 h-3" /> حفظ
+                    </Button>
+                    <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Ctrl+S</span>
+                  </div>
                 </div>
-                <textarea
-                  value={editorContent}
-                  onChange={e => setEditorContent(e.target.value)}
-                  className="w-full h-full bg-background p-4 pt-12 font-mono text-sm resize-none focus:outline-none text-foreground leading-relaxed"
-                  dir="ltr"
-                  spellCheck={false}
-                />
+
+                {/* Code display with syntax highlighting overlay */}
+                <div className="w-full h-full bg-[#1e1e2e] pt-10" dir="ltr">
+                  <div className="flex h-full">
+                    {/* Line numbers */}
+                    <div className="select-none text-right pr-4 pl-2 py-2 text-muted-foreground/40 text-sm font-mono leading-relaxed border-l border-border/20 min-w-[3rem]">
+                      {Array.from({ length: lineCount(editorContent) }, (_, i) => (
+                        <div key={i}>{i + 1}</div>
+                      ))}
+                    </div>
+                    {/* Editor area */}
+                    <div className="flex-1 relative min-w-0">
+                      {/* Syntax highlighted background */}
+                      <div className="absolute inset-0 overflow-auto pointer-events-none" style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}>
+                        <pre className="p-2 text-sm leading-relaxed font-mono">
+                          <SyntaxHighlighter
+                            language={getSyntaxLang(selectedFile.file_name)}
+                            style={oneDark}
+                            customStyle={{ background: 'transparent', padding: 0, margin: 0, fontSize: '0.875rem', lineHeight: '1.625rem', whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
+                            showLineNumbers={false}
+                          >
+                            {editorContent || ' '}
+                          </SyntaxHighlighter>
+                        </pre>
+                      </div>
+                      {/* Actual editable textarea (transparent) */}
+                      <textarea
+                        value={editorContent}
+                        onChange={e => setEditorContent(e.target.value)}
+                        className="w-full h-full bg-transparent p-2 font-mono text-sm resize-none focus:outline-none text-transparent caret-foreground leading-relaxed"
+                        dir="ltr"
+                        spellCheck={false}
+                        style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: 'break-all' }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                اختر ملف للتعديل
+              <div className="flex items-center justify-center h-full text-muted-foreground flex-col gap-3">
+                <FileCode2 className="w-12 h-12 opacity-30" />
+                <span>اختر ملف للتعديل</span>
+                <Button size="sm" variant="outline" onClick={() => setShowNewFile(true)} className="gap-1">
+                  <Plus className="w-4 h-4" /> إنشاء ملف جديد
+                </Button>
               </div>
             )}
           </div>
 
+          {/* Console resize handle */}
+          <div
+            className="h-1 cursor-ns-resize hover:bg-primary/50 transition-colors flex-shrink-0"
+            onMouseDown={handleConsoleDragStart}
+          />
+
+          {/* Console */}
           {showConsole && (
-            <div className="h-48 border-t border-border/30 bg-background">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+            <div className="border-t border-border/30 bg-[#0d1117] flex flex-col flex-shrink-0" style={{ height: consoleHeight }}>
+              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-semibold">Console</span>
+                  <Terminal className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold">Console</span>
+                  {consoleLogs.length > 0 && (
+                    <Badge variant="secondary" className="h-4 text-[10px] px-1.5">
+                      {consoleLogs.length}
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setConsoleLogs([])}>مسح</Button>
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowConsole(false)}>
+                <div className="flex gap-0.5">
+                  <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => setConsoleLogs([])}>مسح</Button>
+                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowConsole(false)}>
                     <X className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
-              <div ref={consoleRef} className="h-[calc(100%-36px)] overflow-y-auto p-3 font-mono text-xs space-y-1" dir="ltr">
+              <div ref={consoleRef} className="flex-1 overflow-y-auto p-2 font-mono text-xs space-y-0.5 min-h-0" dir="ltr">
                 {consoleLogs.length === 0 ? (
-                  <span className="text-muted-foreground">Console output will appear here...</span>
+                  <div className="text-muted-foreground/50 flex items-center gap-2">
+                    <Activity className="w-3 h-3" />
+                    Console output will appear here...
+                  </div>
                 ) : (
-                  consoleLogs.map((log, i) => (
-                    <div key={i} className="flex gap-2">
-                      <span className="text-muted-foreground flex-shrink-0">[{log.time}]</span>
-                      <span className={logColors[log.type] || 'text-foreground'}>{log.text}</span>
-                    </div>
-                  ))
+                  consoleLogs.map((log) => {
+                    const Icon = logIcons[log.type] || Terminal;
+                    return (
+                      <div key={log.id} className="flex gap-2 items-start hover:bg-white/5 px-1 rounded transition-colors">
+                        <Icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-muted-foreground/50'}`} />
+                        <span className="text-muted-foreground/40 flex-shrink-0">{log.time}</span>
+                        <span className={`${logColors[log.type] || 'text-foreground/80'} break-all`}>{log.text}</span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -482,62 +844,63 @@ export default function ProjectEditor() {
         </div>
       </div>
 
-      {/* Bot Token Dialog */}
+      {/* Token Dialog (manual override) */}
       {showTokenDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-md glass rounded-2xl p-8 mx-4"
+            className="w-full max-w-md glass rounded-2xl p-6 mx-4"
             dir="rtl"
           >
-            <div className="text-center mb-6">
-              <div className="w-14 h-14 rounded-xl gradient-bg flex items-center justify-center mx-auto mb-4">
-                <Key className="w-7 h-7 text-primary-foreground" />
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
+                <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
-              <h2 className="text-xl font-bold gradient-text">توكن Discord Bot</h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                أدخل توكن البوت الخاص بك. التوكن يُحفظ في هذا الجهاز فقط ولا يُرسل لأي خادم.
+              <h2 className="text-lg font-bold">توكن Discord</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                {detectedToken
+                  ? 'تم العثور على توكن في الكود. يمكنك تجاوز هذا إذا أردت.'
+                  : 'لم يتم العثور على توكن في الكود. أدخله يدوياً.'}
               </p>
             </div>
 
-            <div className="relative mb-6">
+            <div className="relative mb-4">
               <Input
-                value={botToken}
-                onChange={e => setBotToken(e.target.value)}
-                type={showToken ? 'text' : 'password'}
+                value={manualToken}
+                onChange={e => setManualToken(e.target.value)}
+                type={showManualToken ? 'text' : 'password'}
                 placeholder="الصق التوكن هنا..."
                 className="bg-secondary border-border/50 text-left font-mono text-sm pl-12"
                 dir="ltr"
+                autoFocus
               />
               <button
                 type="button"
-                onClick={() => setShowToken(!showToken)}
+                onClick={() => setShowManualToken(!showManualToken)}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showManualToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
-            <div className="text-xs text-muted-foreground mb-6 space-y-1">
-              <p>📌 للحصول على توكن بوت:</p>
-              <p className="mr-4">1. اذهب إلى <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Discord Developer Portal</a></p>
-              <p className="mr-4">2. أنشئ تطبيق جديد أو اختر تطبيق موجود</p>
-              <p className="mr-4">3. اذهب إلى Bot → Copy Token</p>
+            {detectedToken && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2 mb-4 text-xs text-green-400">
+                تم العثور على توكن في الكود تلقائياً
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground mb-4 space-y-0.5">
+              <p>📌 للحصول على توكن:</p>
+              <p className="mr-4">1. اذهب إلى <a href="https://discord.com/developers/applications" target="_blank" className="text-primary hover:underline">Discord Developer Portal</a></p>
+              <p className="mr-4">2. اختر تطبيق → Bot → Copy Token</p>
             </div>
 
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowTokenDialog(false)}
-              >
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowTokenDialog(false); if (detectedToken) handleStartBot(); }}>
                 إلغاء
               </Button>
-              <Button
-                className="flex-1 gradient-bg text-primary-foreground"
-                onClick={handleSaveToken}
-              >
+              <Button className="flex-1 gradient-bg text-primary-foreground" onClick={() => { handleSaveManualToken(); }}>
                 <Save className="w-4 h-4 ml-1" /> حفظ
               </Button>
             </div>
