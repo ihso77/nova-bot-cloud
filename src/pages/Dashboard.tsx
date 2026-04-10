@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FolderOpen, Clock, Play, Square } from 'lucide-react';
+import { Plus, FolderOpen, Clock, Play, Square, HardDrive } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -24,7 +24,17 @@ interface Subscription {
   status: string;
   expires_at: string;
   is_free_trial: boolean;
-  plans: { name: string; price: number } | null;
+  plans: { name: string; price: number; storage_mb: number } | null;
+}
+
+interface ProjectStorage {
+  [projectId: string]: number; // bytes
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export default function Dashboard() {
@@ -33,6 +43,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectStorage, setProjectStorage] = useState<ProjectStorage>({});
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
@@ -42,9 +53,20 @@ export default function Dashboard() {
   const loadData = async () => {
     const [projRes, subRes] = await Promise.all([
       supabase.from('projects').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }),
-      supabase.from('subscriptions').select('*, plans(name, price)').eq('user_id', user!.id).eq('status', 'active'),
+      supabase.from('subscriptions').select('*, plans(name, price, storage_mb)').eq('user_id', user!.id).eq('status', 'active'),
     ]);
-    if (projRes.data) setProjects(projRes.data);
+    if (projRes.data) {
+      setProjects(projRes.data);
+      // Load storage for each project
+      const storageMap: ProjectStorage = {};
+      for (const p of projRes.data) {
+        const { data: files } = await supabase.from('project_files').select('content').eq('project_id', p.id);
+        if (files) {
+          storageMap[p.id] = files.reduce((sum, f) => sum + new Blob([f.content || '']).size, 0);
+        }
+      }
+      setProjectStorage(storageMap);
+    }
     if (subRes.data) setSubscriptions(subRes.data as any);
     setLoading(false);
   };
@@ -82,18 +104,43 @@ export default function Dashboard() {
         {/* Active Subscriptions */}
         {subscriptions.length > 0 && (
           <div className="mb-8 space-y-3">
-            {subscriptions.map(sub => (
-              <div key={sub.id} className="glass rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <span className="font-semibold">{sub.plans?.name}</span>
-                  {sub.is_free_trial && <Badge className="mr-2 bg-success/20 text-success">تجريبية</Badge>}
+            {subscriptions.map(sub => {
+              const storageLimit = sub.plans?.storage_mb || 512;
+              const storageLimitBytes = storageLimit * 1024 * 1024;
+              const totalStorage = Object.values(projectStorage).reduce((a, b) => a + b, 0);
+              const storagePct = Math.min(100, (totalStorage / storageLimitBytes) * 100);
+              const isNearLimit = storagePct > 85;
+              return (
+                <div key={sub.id} className="glass rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold">{sub.plans?.name}</span>
+                      {sub.is_free_trial && <Badge className="mr-2 bg-success/20 text-success">تجريبية</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}
+                    </div>
+                  </div>
+                  {/* Storage bar */}
+                  <div className="flex items-center gap-3 text-xs">
+                    <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
+                    <div className="flex-1">
+                      <div className="flex justify-between mb-1 text-muted-foreground">
+                        <span>التخزين المستخدم</span>
+                        <span className={isNearLimit ? 'text-yellow-400 font-medium' : ''}>{formatBytes(totalStorage)} / {formatBytes(storageLimitBytes)}</span>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                          style={{ width: `${storagePct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

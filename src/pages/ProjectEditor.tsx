@@ -14,11 +14,12 @@ import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import TerminalPanel from '@/components/TerminalPanel';
 import {
-  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
+  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal as TerminalIcon, X, Edit3,
   Eye, EyeOff, Copy, Download, RotateCcw,
   AlertCircle, CheckCircle2, Loader2, Code2, Zap, FileCode2, FolderOpen,
-  Timer, Activity, Shield,
+  Timer, Activity, Shield, HardDrive, SquareTerminal,
 } from 'lucide-react';
 
 const PROXY_URL = 'https://proxy-production-a7b5.up.railway.app';
@@ -125,6 +126,41 @@ function CodeEditor({ value, onChange, language, wordWrap }: {
   );
 }
 
+interface PlanLimits {
+  storage_mb: number;
+  max_projects: number;
+  plan_name: string;
+}
+
+function calculateStorageBytes(fileList: ProjectFile[], currentContent?: string, currentFileId?: string): number {
+  let total = 0;
+  for (const f of fileList) {
+    const content = f.id === currentFileId ? (currentContent ?? f.content ?? '') : (f.content ?? '');
+    total += new Blob([content]).size;
+  }
+  return total;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function parseMaxProjects(features: any): number {
+  if (Array.isArray(features)) {
+    for (const f of features) {
+      if (typeof f === 'string') {
+        const match = f.match(/(\d+)\s*(مشاريع|مشروع|projects?)/i);
+        if (match) return parseInt(match[1]);
+        if (f.includes('غير محدودة') || f.includes('unlimited')) return Infinity;
+      }
+    }
+    return 1;
+  }
+  return 1;
+}
+
 export default function ProjectEditor() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -132,7 +168,8 @@ export default function ProjectEditor() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
   const [editorContent, setEditorContent] = useState('');
-  const [showConsole, setShowConsole] = useState(true);
+  const [showBottomPanel, setShowBottomPanel] = useState(true);
+  const [bottomTab, setBottomTab] = useState<'console' | 'terminal'>('console');
   const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
   const [newFileName, setNewFileName] = useState('');
   const [showNewFile, setShowNewFile] = useState(false);
@@ -144,10 +181,12 @@ export default function ProjectEditor() {
   const [showTokenDialog, setShowTokenDialog] = useState(false);
   const [manualToken, setManualToken] = useState('');
   const [showManualToken, setShowManualToken] = useState(false);
-  const [consoleHeight, setConsoleHeight] = useState(200);
+  const [consoleHeight, setConsoleHeight] = useState(250);
   const [isDraggingConsole, setIsDraggingConsole] = useState(false);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
+  const [planLimits, setPlanLimits] = useState<PlanLimits>({ storage_mb: 512, max_projects: 1, plan_name: 'مجاني' });
+  const terminalPanelRef = useRef<any>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragStartY = useRef(0);
@@ -158,6 +197,7 @@ export default function ProjectEditor() {
     if (!id || !user) return;
     loadProject();
     loadFiles();
+    loadPlanLimits();
   }, [id, user]);
 
   useEffect(() => {
@@ -179,7 +219,26 @@ export default function ProjectEditor() {
     if (data) {
       setProject(data);
       setProjectName(data.name);
+      // Load plan limits for this project
+      if (data.subscription_id) {
+        const { data: sub } = await supabase.from('subscriptions').select('plan_id').eq('id', data.subscription_id).single();
+        if (sub) {
+          const { data: plan } = await supabase.from('plans').select('*').eq('id', sub.plan_id).single();
+          if (plan) {
+            setPlanLimits({
+              storage_mb: plan.storage_mb,
+              max_projects: parseMaxProjects(plan.features),
+              plan_name: plan.name,
+            });
+          }
+        }
+      }
     }
+  };
+
+  const loadPlanLimits = async () => {
+    if (!user || !project) return;
+    // Already loaded in loadProject, but also handle if project doesn't have subscription yet
   };
 
   const loadFiles = async () => {
@@ -195,6 +254,15 @@ export default function ProjectEditor() {
 
   const saveFile = async () => {
     if (!selectedFile) return;
+    // Check storage limit
+    const newSize = new Blob([editorContent]).size;
+    const otherFilesSize = calculateStorageBytes(files, undefined, selectedFile.id);
+    const totalAfterSave = otherFilesSize + newSize;
+    const limitBytes = planLimits.storage_mb * 1024 * 1024;
+    if (totalAfterSave > limitBytes) {
+      toast.error(`تجاوزت حد التخزين! (${formatBytes(totalAfterSave)} / ${formatBytes(limitBytes)})`);
+      return;
+    }
     const { error } = await supabase
       .from('project_files')
       .update({ content: editorContent })
@@ -203,6 +271,7 @@ export default function ProjectEditor() {
     else {
       toast.success('تم الحفظ');
       setHasUnsaved(false);
+      setFiles(prev => prev.map(f => f.id === selectedFile.id ? { ...f, content: editorContent } : f));
       setSelectedFile(prev => prev ? { ...prev, content: editorContent } : null);
     }
   };
@@ -423,6 +492,13 @@ export default function ProjectEditor() {
 
   const createFile = async () => {
     if (!newFileName.trim() || !id) return;
+    // Check storage limit (new empty file has ~0 bytes, but check anyway)
+    const currentStorage = calculateStorageBytes(files);
+    const limitBytes = planLimits.storage_mb * 1024 * 1024;
+    if (currentStorage >= limitBytes) {
+      toast.error(`وصلت لحد التخزين! (${formatBytes(currentStorage)} / ${formatBytes(limitBytes)})`);
+      return;
+    }
     const { data, error } = await supabase
       .from('project_files')
       .insert({ project_id: id, file_name: newFileName.trim(), file_path: '/', content: '' })
@@ -451,10 +527,26 @@ export default function ProjectEditor() {
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const importedFiles = e.target.files;
     if (!importedFiles) return;
-    Array.from(importedFiles).forEach(file => {
+    const currentStorage = calculateStorageBytes(files);
+    const limitBytes = planLimits.storage_mb * 1024 * 1024;
+    let importedTotal = 0;
+    const fileList = Array.from(importedFiles);
+    for (const f of fileList) importedTotal += f.size;
+    if (currentStorage + importedTotal > limitBytes) {
+      toast.error(`الملفات تتجاوز حد التخزين! (${formatBytes(currentStorage + importedTotal)} / ${formatBytes(limitBytes)})`);
+      e.target.value = '';
+      return;
+    }
+    fileList.forEach(file => {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const content = ev.target?.result as string;
+        // Re-check storage before each insert (in case multiple files)
+        const latestStorage = calculateStorageBytes(files);
+        if (latestStorage + new Blob([content]).size > limitBytes) {
+          toast.error(`تجاوز حد التخزين أثناء استيراد الملفات`);
+          return;
+        }
         const { data } = await supabase
           .from('project_files')
           .insert({ project_id: id!, file_name: file.name, file_path: '/', content })
@@ -467,6 +559,7 @@ export default function ProjectEditor() {
       };
       reader.readAsText(file);
     });
+    e.target.value = '';
   };
 
   const updateProjectName = async () => {
@@ -625,8 +718,14 @@ export default function ProjectEditor() {
 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowConsole(!showConsole)} title={showConsole ? 'إخفاء الكونسول' : 'عرض الكونسول'}>
-            <Terminal className="w-4 h-4" />
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
+            <TerminalIcon className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'terminal' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('terminal'); }} title="Terminal">
+            <SquareTerminal className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${!showBottomPanel ? 'text-muted-foreground' : ''}`} onClick={() => setShowBottomPanel(!showBottomPanel)} title={showBottomPanel ? 'إخفاء' : 'عرض'}>
+            <X className="w-3 h-3" />
           </Button>
 
           {project.status === 'running' || isDeploying ? (
@@ -725,8 +824,35 @@ export default function ProjectEditor() {
             )}
           </div>
 
-          {/* Stats footer */}
-          <div className="p-2 border-t border-border/30 text-xs text-muted-foreground space-y-0.5">
+          {/* Storage usage & Stats footer */}
+          <div className="p-2 border-t border-border/30 text-xs text-muted-foreground space-y-1.5">
+            {/* Storage bar */}
+            {(() => {
+              const currentStorage = calculateStorageBytes(files, editorContent, selectedFile?.id);
+              const limitBytes = planLimits.storage_mb * 1024 * 1024;
+              const pct = Math.min(100, (currentStorage / limitBytes) * 100);
+              const isNearLimit = pct > 85;
+              const isOverLimit = currentStorage > limitBytes;
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1">
+                      <HardDrive className={`w-3 h-3 ${isOverLimit ? 'text-red-400' : isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
+                      <span className={isOverLimit ? 'text-red-400 font-medium' : isNearLimit ? 'text-yellow-400' : ''}>
+                        {formatBytes(currentStorage)} / {formatBytes(limitBytes)}
+                      </span>
+                    </div>
+                    <span className={isOverLimit ? 'text-red-400' : ''}>{Math.round(pct)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             <div className="flex justify-between">
               <span>{files.length} ملف</span>
               <span>{selectedFile ? lineCount(editorContent) : 0} سطر</span>
@@ -796,51 +922,90 @@ export default function ProjectEditor() {
             )}
           </div>
 
-          {/* Console resize handle */}
+          {/* Bottom Panel resize handle */}
           <div
             className="h-1 cursor-ns-resize hover:bg-primary/50 transition-colors flex-shrink-0"
             onMouseDown={handleConsoleDragStart}
           />
 
-          {/* Console */}
-          {showConsole && (
-            <div className="border-t border-border/30 bg-[#0d1117] flex flex-col flex-shrink-0" style={{ height: consoleHeight }}>
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 flex-shrink-0">
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-semibold">Console</span>
-                  {consoleLogs.length > 0 && (
-                    <Badge variant="secondary" className="h-4 text-[10px] px-1.5">
-                      {consoleLogs.length}
-                    </Badge>
-                  )}
+          {/* Bottom Panel - Console & Terminal */}
+          {showBottomPanel && (
+            <div className="border-t border-border/30 flex flex-col flex-shrink-0" style={{ height: consoleHeight }}>
+              {/* Tab bar */}
+              <div className="flex items-center justify-between px-1 border-b border-border/30 flex-shrink-0 bg-card/80">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => setBottomTab('console')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 ${
+                      bottomTab === 'console'
+                        ? 'text-primary border-primary bg-primary/5'
+                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    <TerminalIcon className="w-3 h-3" />
+                    Console
+                    {consoleLogs.length > 0 && (
+                      <Badge variant="secondary" className="h-3.5 text-[9px] px-1 ml-1">{consoleLogs.length}</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setBottomTab('terminal')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 ${
+                      bottomTab === 'terminal'
+                        ? 'text-primary border-primary bg-primary/5'
+                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-secondary/50'
+                    }`}
+                  >
+                    <SquareTerminal className="w-3 h-3" />
+                    Terminal
+                  </button>
                 </div>
-                <div className="flex gap-0.5">
-                  <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => setConsoleLogs([])}>مسح</Button>
-                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowConsole(false)}>
+                <div className="flex gap-0.5 px-1">
+                  {bottomTab === 'console' && (
+                    <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => setConsoleLogs([])}>مسح</Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowBottomPanel(false)}>
                     <X className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
-              <div ref={consoleRef} className="flex-1 overflow-y-auto p-2 font-mono text-xs space-y-0.5 min-h-0" dir="ltr">
-                {consoleLogs.length === 0 ? (
-                  <div className="text-muted-foreground/50 flex items-center gap-2">
-                    <Activity className="w-3 h-3" />
-                    Console output will appear here...
-                  </div>
-                ) : (
-                  consoleLogs.map((log) => {
-                    const Icon = logIcons[log.type] || Terminal;
-                    return (
-                      <div key={log.id} className="flex gap-2 items-start hover:bg-white/5 px-1 rounded transition-colors">
-                        <Icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-muted-foreground/50'}`} />
-                        <span className="text-muted-foreground/40 flex-shrink-0">{log.time}</span>
-                        <span className={`${logColors[log.type] || 'text-foreground/80'} break-all`}>{log.text}</span>
+
+              {/* Console Tab */}
+              {bottomTab === 'console' && (
+                <div className="flex-1 overflow-hidden bg-[#0d1117]">
+                  <div ref={consoleRef} className="h-full overflow-y-auto p-2 font-mono text-xs space-y-0.5" dir="ltr">
+                    {consoleLogs.length === 0 ? (
+                      <div className="text-muted-foreground/50 flex items-center gap-2 h-full">
+                        <Activity className="w-3 h-3" />
+                        Console output will appear here...
                       </div>
-                    );
-                  })
-                )}
-              </div>
+                    ) : (
+                      consoleLogs.map((log) => {
+                        const Icon = logIcons[log.type] || TerminalIcon;
+                        return (
+                          <div key={log.id} className="flex gap-2 items-start hover:bg-white/5 px-1 rounded transition-colors">
+                            <Icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-muted-foreground/50'}`} />
+                            <span className="text-muted-foreground/40 flex-shrink-0">{log.time}</span>
+                            <span className={`${logColors[log.type] || 'text-foreground/80'} break-all`}>{log.text}</span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Terminal Tab */}
+              {bottomTab === 'terminal' && (
+                <div className="flex-1 overflow-hidden bg-[#0a0a0f]">
+                  <TerminalPanel
+                    ref={terminalPanelRef}
+                    serviceId={project?.railway_service_id || null}
+                    projectName={project?.name || ''}
+                    botLanguage={project?.language || 'javascript'}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
