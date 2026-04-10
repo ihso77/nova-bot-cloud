@@ -14,8 +14,8 @@ interface Plan {
   description: string;
 }
 
-// Cloudflare Worker proxy URL - bypasses CORS
-const PAYMENT_PROXY_URL = 'https://nova-vps-payment-proxy.ihso77.workers.dev';
+// Railway proxy URL - bypasses CORS, keeps API keys server-side
+const PAYMENT_PROXY_URL = 'https://proxy-production-a7b5.up.railway.app/payment';
 
 export default function Checkout() {
   const [searchParams] = useSearchParams();
