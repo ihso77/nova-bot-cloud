@@ -14,6 +14,9 @@ interface Plan {
   description: string;
 }
 
+// Cloudflare Worker proxy URL - bypasses CORS
+const PAYMENT_PROXY_URL = 'https://nova-vps-payment-proxy.ihso77.workers.dev';
+
 export default function Checkout() {
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('plan');
@@ -44,31 +47,34 @@ export default function Checkout() {
     try {
       const siteUrl = window.location.origin;
 
-      // Call database RPC (server-side, no CORS issues)
-      const { data: result, error: rpcError } = await supabase.rpc('create_paymento_payment', {
-        p_plan_id: plan.id,
-        p_user_id: user.id,
-        p_amount: plan.price,
-        p_success_url: `${siteUrl}/payment/success?plan=${plan.id}&user=${user.id}`,
-        p_cancel_url: `${siteUrl}/payment/cancel`,
+      // Call Cloudflare Worker proxy (no CORS issues, API keys hidden)
+      const res = await fetch(PAYMENT_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: plan.price,
+          currency: 'USD',
+          description: `Nova VPS - ${plan.name}`,
+          success_url: `${siteUrl}/payment/success?plan=${plan.id}&user=${user.id}`,
+          cancel_url: `${siteUrl}/payment/cancel`,
+          metadata: { planId: plan.id, userId: user.id },
+        }),
       });
 
-      if (rpcError) throw rpcError;
+      const data = await res.json();
 
-      const paymentData = result as any;
-
-      if (paymentData?.error) {
-        throw new Error(paymentData.error);
+      if (!res.ok) {
+        throw new Error(data.error || 'حدث خطأ في الاتصال ببوابة الدفع');
       }
 
-      const paymentUrl = paymentData?.url || paymentData?.payment_url || paymentData?.checkout_url;
+      const paymentUrl = data.url || data.payment_url || data.checkout_url;
 
       if (!paymentUrl) {
-        throw new Error('لم يتم استلام رابط الدفع من بوابة الدفع');
+        throw new Error('لم يتم استلام رابط الدفع');
       }
 
       // Save payment record
-      const payId = paymentData?.id || paymentData?.payment_id;
+      const payId = data.id || data.payment_id;
       if (payId) {
         await supabase.from('payments').insert({
           id: payId,
