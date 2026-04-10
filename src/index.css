@@ -114,10 +114,18 @@
   animation: gridMove 20s linear infinite;
 }
 
-/* Code editor selection fix */
-.code-editor-area::selection,
-.code-editor-area *::selection {
-  background: rgba(139, 92, 246, 0.3);
+/* Code editor: completely prevent selection on syntax highlight layer */
+.code-editor-area .syntax-highlight-layer,
+.code-editor-area .syntax-highlight-layer *,
+.code-editor-area .syntax-highlight-layer code,
+.code-editor-area .syntax-highlight-layer span,
+.code-editor-area .syntax-highlight-layer pre {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  pointer-events: none !important;
+  cursor: default;
 }
 
 /* Scrollbar */

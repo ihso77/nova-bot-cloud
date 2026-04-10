@@ -165,7 +165,7 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
         {/* Syntax highlighted background (read-only, pointer-events-none) */}
         <div
           ref={highlightRef}
-          className="absolute inset-0 overflow-hidden pointer-events-none p-2 select-none"
+          className="absolute inset-0 overflow-hidden p-2 syntax-highlight-layer"
         >
           <SyntaxHighlighter
             language={language}
