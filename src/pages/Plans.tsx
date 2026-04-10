@@ -24,24 +24,17 @@ interface Plan {
 export default function Plans() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paymentEnabled, setPaymentEnabled] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadPlans();
-    loadSettings();
   }, []);
 
   const loadPlans = async () => {
     const { data } = await supabase.from('plans').select('*').order('sort_order');
     if (data) setPlans(data.map(p => ({ ...p, features: (p.features as any) || [] })));
     setLoading(false);
-  };
-
-  const loadSettings = async () => {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'payment_enabled').maybeSingle();
-    if (data) setPaymentEnabled(data.value === true || data.value === 'true');
   };
 
   const handleSelectPlan = async (plan: Plan) => {
@@ -74,27 +67,11 @@ export default function Plans() {
         toast.error('حدث خطأ');
       } else {
         toast.success('تم تفعيل الباقة المجانية لمدة شهر!');
-        navigate('/dashboard/new-project?plan=' + plan.id);
+        navigate('/dashboard/new-project');
       }
     } else {
-      if (!paymentEnabled) {
-        // Payment disabled - give free access
-        const { error } = await supabase.from('subscriptions').insert({
-          user_id: user.id,
-          plan_id: plan.id,
-          status: 'active',
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          is_free_trial: false,
-        });
-        if (error) {
-          toast.error('حدث خطأ');
-        } else {
-          toast.success('تم تفعيل الباقة! (الدفع معطل حالياً)');
-          navigate('/dashboard/new-project?plan=' + plan.id);
-        }
-      } else {
-        navigate('/checkout?plan=' + plan.id);
-      }
+      // Always go to checkout for paid plans - payment is always required
+      navigate('/checkout?plan=' + plan.id);
     }
   };
 
@@ -108,9 +85,6 @@ export default function Plans() {
             <span className="gradient-text">اختر باقتك</span>
           </h1>
           <p className="text-muted-foreground text-lg">باقات تناسب جميع احتياجاتك</p>
-          {!paymentEnabled && (
-            <Badge className="mt-4 gradient-bg text-primary-foreground">🎉 الدفع معطل حالياً - جميع الباقات مجانية!</Badge>
-          )}
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">

@@ -11,6 +11,8 @@ import Dashboard from "./pages/Dashboard";
 import NewProject from "./pages/NewProject";
 import ProjectEditor from "./pages/ProjectEditor";
 import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import GiftPopup from "./components/GiftPopup";
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/dashboard/new-project" element={<NewProject />} />
             <Route path="/dashboard/project/:id" element={<ProjectEditor />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/payment/success" element={<PaymentSuccess />} />
+            <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

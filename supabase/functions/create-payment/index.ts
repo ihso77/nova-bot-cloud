@@ -19,7 +19,7 @@ serve(async (req) => {
 
     const { planId, amount, userId } = await req.json();
 
-    if (!planId || !userId) {
+    if (!planId || !userId || !amount) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -30,61 +30,80 @@ serve(async (req) => {
     const PAYMENTO_SECRET_KEY = Deno.env.get('PAYMENTO_SECRET_KEY');
 
     if (!PAYMENTO_API_KEY || !PAYMENTO_SECRET_KEY) {
-      // If Paymento keys not configured, create subscription directly
-      const { error } = await supabaseClient.from('subscriptions').insert({
-        user_id: userId,
-        plan_id: planId,
-        status: 'active',
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      });
-
-      if (error) throw error;
-
-      return new Response(JSON.stringify({ success: true }), {
+      return new Response(JSON.stringify({
+        error: 'بوابة الدفع غير متاحة حالياً. تواصل مع الدعم الفني.',
+      }), {
+        status: 503,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Try Paymento API
-    try {
-      const paymentRes = await fetch('https://api.paymento.io/v1/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${PAYMENTO_API_KEY}`,
-          'X-Secret-Key': PAYMENTO_SECRET_KEY,
-        },
-        body: JSON.stringify({
-          amount: amount,
-          currency: 'USD',
-          description: `Nova VPS - Plan subscription`,
-          metadata: { planId, userId },
-          success_url: `${Deno.env.get('SITE_URL') || 'https://novavps.app'}/dashboard`,
-          cancel_url: `${Deno.env.get('SITE_URL') || 'https://novavps.app'}/plans`,
-        }),
-      });
+    const SITE_URL = Deno.env.get('SITE_URL') || 'https://novavps.app';
 
-      if (paymentRes.ok) {
-        const paymentData = await paymentRes.json();
-        return new Response(JSON.stringify({ paymentUrl: paymentData.url || paymentData.payment_url }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    } catch (e) {
-      console.error('Paymento error:', e);
-    }
-
-    // Fallback: create subscription directly
-    const { error } = await supabaseClient.from('subscriptions').insert({
-      user_id: userId,
-      plan_id: planId,
-      status: 'active',
-      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    // Create payment via Paymento API
+    const paymentRes = await fetch('https://api.paymento.io/v1/payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PAYMENTO_API_KEY}`,
+        'X-Secret-Key': PAYMENTO_SECRET_KEY,
+      },
+      body: JSON.stringify({
+        amount: amount,
+        currency: 'USD',
+        description: `Nova VPS - ${planId} subscription`,
+        metadata: { planId, userId },
+        success_url: `${SITE_URL}/payment/success?plan=${planId}&user=${userId}`,
+        cancel_url: `${SITE_URL}/payment/cancel`,
+        webhook_url: `${SITE_URL}/functions/v1/payment-webhook`,
+      }),
     });
 
-    if (error) throw error;
+    if (!paymentRes.ok) {
+      const errorText = await paymentRes.text();
+      console.error('Paymento API error:', paymentRes.status, errorText);
+      return new Response(JSON.stringify({
+        error: 'حدث خطأ في الاتصال ببوابة الدفع. حاول مرة أخرى.',
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
+    const paymentData = await paymentRes.json();
+
+    // Store the payment record for tracking
+    const paymentId = paymentData.id || paymentData.payment_id;
+    if (paymentId) {
+      await supabaseClient.from('payments').insert({
+        id: paymentId,
+        user_id: userId,
+        plan_id: planId,
+        amount: amount,
+        currency: 'USD',
+        status: 'pending',
+        provider: 'paymento',
+        created_at: new Date().toISOString(),
+      }).then(() => {
+        console.log('Payment record created:', paymentId);
+      }).catch((err) => {
+        console.error('Failed to create payment record:', err);
+        // Don't fail the flow if payment record creation fails
+      });
+    }
+
+    const paymentUrl = paymentData.url || paymentData.payment_url || paymentData.checkout_url;
+
+    if (!paymentUrl) {
+      return new Response(JSON.stringify({
+        error: 'لم يتم استلام رابط الدفع من بوابة الدفع.',
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ paymentUrl }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
