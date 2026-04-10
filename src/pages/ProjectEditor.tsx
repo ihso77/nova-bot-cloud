@@ -165,7 +165,7 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
         {/* Syntax highlighted background (read-only, pointer-events-none) */}
         <div
           ref={highlightRef}
-          className="absolute inset-0 overflow-hidden pointer-events-none p-2"
+          className="absolute inset-0 overflow-hidden pointer-events-none p-2 select-none"
         >
           <SyntaxHighlighter
             language={language}
@@ -179,6 +179,7 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
               whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
               wordBreak: wordWrap ? 'break-all' : 'normal',
               overflow: 'visible',
+              userSelect: 'none',
             }}
             showLineNumbers={false}
             wrapLines={true}
@@ -194,7 +195,7 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
           onChange={handleChange}
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}
-          className="absolute inset-0 w-full h-full bg-transparent p-2 font-mono text-[13px] resize-none focus:outline-none text-transparent caret-white leading-[1.6rem]"
+          className="absolute inset-0 w-full h-full bg-transparent p-2 font-mono text-[13px] resize-none focus:outline-none text-transparent caret-white leading-[1.6rem] z-10"
           dir="ltr"
           spellCheck={false}
           autoCapitalize="off"
