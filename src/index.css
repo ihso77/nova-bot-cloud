@@ -15,30 +15,30 @@
     --popover: 250 20% 10%;
     --popover-foreground: 250 10% 95%;
 
-    --primary: 215 70% 55%;
+    --primary: 265 90% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 220 10% 90%;
+    --secondary: 250 20% 16%;
+    --secondary-foreground: 250 10% 90%;
 
-    --muted: 220 10% 14%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 250 15% 14%;
+    --muted-foreground: 250 10% 55%;
 
-    --accent: 200 60% 50%;
+    --accent: 280 80% 65%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 18%;
-    --input: 220 14% 18%;
-    --ring: 215 70% 55%;
+    --border: 250 20% 18%;
+    --input: 250 20% 18%;
+    --ring: 265 90% 60%;
 
     --radius: 0.75rem;
 
-    --glow-primary: 215 70% 55%;
-    --glow-accent: 200 60% 50%;
-    --surface-glass: 220 14% 12%;
+    --glow-primary: 265 90% 60%;
+    --glow-accent: 280 80% 65%;
+    --surface-glass: 250 20% 12%;
 
     --success: 142 76% 46%;
     --warning: 38 92% 50%;
@@ -70,7 +70,7 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
   }
   .gradient-bg {
-    @apply bg-gradient-to-r from-[hsl(215,70%,45%)] to-[hsl(200,60%,40%)];
+    @apply bg-gradient-to-r from-primary to-accent;
   }
   .gradient-border {
     position: relative;
@@ -81,7 +81,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, hsl(215,70%,55%), hsl(200,60%,50%));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -112,6 +112,12 @@
 
 .animate-grid {
   animation: gridMove 20s linear infinite;
+}
+
+/* Code editor selection fix */
+.code-editor-area::selection,
+.code-editor-area *::selection {
+  background: rgba(139, 92, 246, 0.3);
 }
 
 /* Scrollbar */

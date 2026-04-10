@@ -144,11 +144,11 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
   }, []);
 
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden">
+    <div className="flex-1 flex min-h-0 overflow-hidden code-editor-area">
       {/* Line numbers - inside the field */}
       <div
         ref={lineNumRef}
-        className="overflow-hidden flex-shrink-0 select-none bg-[#1e1e2e] border-l border-[#333] pl-3 pr-2 py-2"
+        className="overflow-hidden flex-shrink-0 select-none bg-[#0d0d0d] border-l border-[#2a2a2a] pl-3 pr-2 py-2"
         style={{ width: '3.5rem' }}
       >
         <div className="text-[13px] leading-[1.6rem] font-mono text-[#555]">
@@ -870,7 +870,7 @@ export default function ProjectEditor() {
                 </div>
 
                 {/* Code editor */}
-                <div className="w-full h-full bg-[#1e1e2e] pt-10 flex flex-col" dir="ltr">
+                <div className="w-full h-full bg-[#0d0d0d] pt-10 flex flex-col" dir="ltr">
                   <EditorWithLines
                     value={editorContent}
                     onChange={setEditorContent}
@@ -950,7 +950,7 @@ export default function ProjectEditor() {
             dir="rtl"
           >
             <div className="text-center mb-5">
-              <div className="w-12 h-12 rounded-xl bg-[hsl(215,70%,30%)] flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
               <h2 className="text-lg font-bold">توكن Discord</h2>
