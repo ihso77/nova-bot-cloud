@@ -59,8 +59,8 @@ serve(async (req) => {
           currency: 'USD',
           description: `Nova VPS - Plan subscription`,
           metadata: { planId, userId },
-          success_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app')}/dashboard`,
-          cancel_url: `${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app')}/plans`,
+          success_url: `${Deno.env.get('SITE_URL') || 'https://novavps.app'}/dashboard`,
+          cancel_url: `${Deno.env.get('SITE_URL') || 'https://novavps.app'}/plans`,
         }),
       });
 
