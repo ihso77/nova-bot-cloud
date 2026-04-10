@@ -11,7 +11,7 @@ import {
   Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3, Key, Eye, EyeOff,
 } from 'lucide-react';
 
-const PROXY_URL = 'https://proxy-production-46a1.up.railway.app';
+const PROXY_URL = 'https://proxy-production-a7b5.up.railway.app';
 
 interface ProjectFile {
   id: string;
