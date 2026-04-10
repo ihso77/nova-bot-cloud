@@ -9,9 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 import {
   Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
-  Eye, EyeOff, Copy, Download, RotateCcw, ChevronDown, ChevronUp,
+  Eye, EyeOff, Copy, Download, RotateCcw,
   AlertCircle, CheckCircle2, Loader2, Code2, Zap, FileCode2, FolderOpen,
   Timer, Activity, Shield,
 } from 'lucide-react';
@@ -47,7 +50,6 @@ function extractToken(code: string, language: string): string | null {
     const m2 = code.match(/['"`]([^'"`]{50,})['"`]/);
     return m2 ? m2[1] : null;
   }
-  // JS/TS - look for client.login, bot.login
   const patterns = [
     /\.login\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/,
     /\.login\s*\(\s*(['"`])([^'"`]+)\1\s*\)/,
@@ -76,101 +78,44 @@ function lineCount(s: string): number {
   return s ? s.split('\n').length : 1;
 }
 
-// --- Editor Component with synced line numbers ---
-function EditorWithLines({ value, onChange, wordWrap }: {
+function getCodeMirrorLang(language: string) {
+  if (language === 'python') return python();
+  return javascript({ jsx: true });
+}
+
+// --- CodeMirror Editor Wrapper ---
+function CodeEditor({ value, onChange, language, wordWrap }: {
   value: string;
   onChange: (v: string) => void;
+  language: string;
   wordWrap: boolean;
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const lineNumRef = useRef<HTMLDivElement>(null);
-
-  const lineCountVal = value ? value.split('\n').length : 1;
-
-  // Sync scroll: textarea -> line numbers
-  const handleScroll = () => {
-    const ta = textareaRef.current;
-    if (ta && lineNumRef.current) {
-      lineNumRef.current.scrollTop = ta.scrollTop;
-    }
-  };
-
-  // Handle Tab key for indentation
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const newValue = value.substring(0, start) + '  ' + value.substring(end);
-      onChange(newValue);
-      requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = start + 2;
-      });
-    }
-    // Auto-close brackets
-    const pairs: Record<string, string> = { '(': ')', '{': '}', '[': ']', '"': '"', "'": "'", '`': '`' };
-    if (pairs[e.key]) {
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      if (start !== end) {
-        // Wrap selection
-        e.preventDefault();
-        const selected = value.substring(start, end);
-        const newValue = value.substring(0, start) + e.key + selected + pairs[e.key] + value.substring(end);
-        onChange(newValue);
-        requestAnimationFrame(() => {
-          ta.selectionStart = start + 1;
-          ta.selectionEnd = end + 1;
-        });
-      } else {
-        e.preventDefault();
-        const newValue = value.substring(0, start) + e.key + pairs[e.key] + value.substring(end);
-        onChange(newValue);
-        requestAnimationFrame(() => {
-          ta.selectionStart = ta.selectionEnd = start + 1;
-        });
-      }
-    }
-  };
-
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden">
-      {/* Line numbers */}
-      <div
-        ref={lineNumRef}
-        className="overflow-hidden flex-shrink-0 select-none bg-[#0d0d0d] border-l border-[#2a2a2a] pl-3 pr-2 py-2"
-        style={{ width: '3.5rem' }}
-      >
-        <div className="text-[13px] leading-[1.6rem] font-mono text-[#444] text-right">
-          {Array.from({ length: lineCountVal }, (_, i) => (
-            <div key={i + 1}>{i + 1}</div>
-          ))}
-        </div>
-      </div>
-
-      {/* Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onScroll={handleScroll}
-        onKeyDown={handleKeyDown}
-        className="flex-1 bg-[#0d0d0d] text-[#d4d4d4] p-2 font-mono text-[13px] resize-none focus:outline-none leading-[1.6rem]"
-        dir="ltr"
-        spellCheck={false}
-        autoCapitalize="off"
-        autoCorrect="off"
-        style={{
-          whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-          wordBreak: wordWrap ? 'break-all' : 'normal',
-          overflow: 'auto',
-          tabSize: 2,
-          caretColor: '#a78bfa',
-        }}
-      />
-    </div>
+    <CodeMirror
+      value={value}
+      onChange={onChange}
+      extensions={[getCodeMirrorLang(language)]}
+      theme="dark"
+      basicSetup={{
+        lineNumbers: true,
+        highlightActiveLineGutter: true,
+        highlightActiveLine: true,
+        bracketMatching: true,
+        closeBrackets: true,
+        autocompletion: true,
+        foldGutter: true,
+        indentOnInput: true,
+        tabSize: 2,
+      }}
+      style={{
+        height: '100%',
+        fontSize: '13px',
+        backgroundColor: '#0d0d0d',
+      }}
+      className="cm-editor-wrapper"
+      editable={true}
+      spellCheck={false}
+    />
   );
 }
 
@@ -213,10 +158,8 @@ export default function ProjectEditor() {
     if (consoleRef.current) consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
   }, [consoleLogs]);
 
-  // Detect token from code
   const detectedToken = selectedFile ? extractToken(editorContent || '', project?.language || '') : null;
 
-  // Auto-save indicator
   useEffect(() => {
     if (selectedFile && editorContent !== selectedFile.content) {
       setHasUnsaved(true);
@@ -275,21 +218,21 @@ export default function ProjectEditor() {
 
         if (data.status === 'SUCCESS') {
           setDeployProgress(100);
-          addLog('success', '✅ تم تشغيل البوت بنجاح!');
+          addLog('success', 'تم تشغيل البوت بنجاح!');
           if (data.logs?.length) {
             for (const l of data.logs) {
               if (l.severity === 'error') addLog('error', l.message);
               else addLog('info', l.message);
             }
           }
-          addLog('info', '🤖 البوت جاهز للاستخدام في Discord');
+          addLog('info', 'البوت جاهز للاستخدام في Discord');
           return 'SUCCESS';
         }
 
         if (data.status === 'CRASHED') {
-          addLog('error', '❌ فشل تشغيل البوت');
+          addLog('error', 'فشل تشغيل البوت');
           if (data.logs?.length) {
-            addLog('info', '📋 تفاصيل الخطأ:');
+            addLog('info', 'تفاصيل الخطأ:');
             for (const l of data.logs) {
               addLog(l.severity === 'error' ? 'error' : 'warning', `  ${l.message}`);
             }
@@ -304,14 +247,13 @@ export default function ProjectEditor() {
         // network error - continue polling
       }
     }
-    addLog('warning', '⏰ استغرقت العملية وقتاً طويلاً، تحقق من حالة البوت لاحقاً');
+    addLog('warning', 'استغرقت العملية وقتاً طويلاً، تحقق من حالة البوت لاحقاً');
     return 'TIMEOUT';
   }, [addLog]);
 
   const handleStartBot = async () => {
     if (!project || !user) return;
 
-    // Try to get token from code first
     const allFilesContent = files.map(f => f.content || '').join('\n');
     const codeToken = extractToken(allFilesContent, project.language);
 
@@ -333,26 +275,24 @@ export default function ProjectEditor() {
     setDeployProgress(0);
     setDeployStatus('جاري التحضير...');
 
-    addLog('info', '🚀 جاري بدء النشر...');
+    addLog('info', 'جاري بدء النشر...');
 
-    // Auto-save current file
     if (selectedFile && hasUnsaved) {
       await supabase.from('project_files').update({ content: editorContent }).eq('id', selectedFile.id);
-      addLog('info', '💾 تم حفظ الملفات تلقائياً');
+      addLog('info', 'تم حفظ الملفات تلقائياً');
     }
 
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
     setProject(prev => prev ? { ...prev, status: 'deploying' } : null);
 
     try {
-      // Reload all files from DB to get latest
       const { data: allFiles } = await supabase
         .from('project_files')
         .select('file_name, content')
         .eq('project_id', id!);
 
       if (!allFiles || allFiles.length === 0) {
-        addLog('error', '❌ لا توجد ملفات في المشروع');
+        addLog('error', 'لا توجد ملفات في المشروع');
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
@@ -366,7 +306,7 @@ export default function ProjectEditor() {
       );
 
       if (!mainFile) {
-        addLog('error', '❌ لا يوجد ملف رئيسي (index.js أو bot.py)');
+        addLog('error', 'لا يوجد ملف رئيسي (index.js أو bot.py)');
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
@@ -393,7 +333,7 @@ export default function ProjectEditor() {
       const proxyData = await proxyRes.json();
 
       if (!proxyRes.ok || proxyData.error) {
-        addLog('error', `❌ خطأ: ${proxyData.error || 'خطأ غير معروف'}`);
+        addLog('error', `خطأ: ${proxyData.error || 'خطأ غير معروف'}`);
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
@@ -419,7 +359,7 @@ export default function ProjectEditor() {
         }
       }
     } catch (err: any) {
-      addLog('error', `❌ خطأ: ${err.message}`);
+      addLog('error', `خطأ: ${err.message}`);
       await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'error' } : null);
     }
@@ -431,7 +371,7 @@ export default function ProjectEditor() {
 
   const handleStopBot = async () => {
     if (!project || !user) return;
-    addLog('warning', '⏹️ جاري إيقاف البوت...');
+    addLog('warning', 'جاري إيقاف البوت...');
     setIsDeploying(true);
 
     try {
@@ -444,12 +384,12 @@ export default function ProjectEditor() {
         });
 
         if (proxyRes.ok) {
-          addLog('success', '✅ تم إيقاف البوت');
+          addLog('success', 'تم إيقاف البوت');
         } else {
-          addLog('warning', '⚠️ حدث خطأ أثناء الإيقاف');
+          addLog('warning', 'حدث خطأ أثناء الإيقاف');
         }
       } else {
-        addLog('success', '✅ تم إيقاف البوت');
+        addLog('success', 'تم إيقاف البوت');
       }
 
       await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
@@ -457,7 +397,7 @@ export default function ProjectEditor() {
     } catch (err: any) {
       await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'stopped', railway_service_id: null } : null);
-      addLog('success', '✅ تم إيقاف البوت');
+      addLog('success', 'تم إيقاف البوت');
     }
     setIsDeploying(false);
   };
@@ -560,7 +500,6 @@ export default function ProjectEditor() {
       a.click();
       URL.revokeObjectURL(url);
     } else {
-      // Create simple zip-like text
       const content = allFiles.map(f => `===== ${f.file_name} =====\n${f.content || ''}`).join('\n\n');
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -574,7 +513,6 @@ export default function ProjectEditor() {
   };
 
   const handleFormatCode = () => {
-    // Basic JS/Python formatting (trim trailing spaces, normalize line endings)
     const formatted = editorContent
       .split('\n')
       .map(l => l.trimEnd())
@@ -584,7 +522,6 @@ export default function ProjectEditor() {
     toast.success('تم تنسيق الكود');
   };
 
-  // Console resize
   const handleConsoleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsDraggingConsole(true);
@@ -605,7 +542,6 @@ export default function ProjectEditor() {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, [isDraggingConsole]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -669,7 +605,6 @@ export default function ProjectEditor() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Token indicator */}
           {detectedToken ? (
             <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1" title="تم العثور على التوكن في الكود">
               <Shield className="w-3.5 h-3.5" />
@@ -832,13 +767,16 @@ export default function ProjectEditor() {
                   </div>
                 </div>
 
-                {/* Code editor */}
-                <div className="w-full h-full bg-[#0d0d0d] pt-10 flex flex-col" dir="ltr">
-                  <EditorWithLines
-                    value={editorContent}
-                    onChange={setEditorContent}
-                    wordWrap={wordWrap}
-                  />
+                {/* CodeMirror Editor */}
+                <div className="w-full h-full bg-[#0d0d0d] pt-10 flex flex-col overflow-hidden" dir="ltr" style={{ '--cm-bg': '#0d0d0d' } as React.CSSProperties}>
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <CodeEditor
+                      value={editorContent}
+                      onChange={setEditorContent}
+                      language={project?.language || 'javascript'}
+                      wordWrap={wordWrap}
+                    />
+                  </div>
                 </div>
               </>
             ) : (
@@ -902,7 +840,7 @@ export default function ProjectEditor() {
         </div>
       </div>
 
-      {/* Token Dialog (manual override) */}
+      {/* Token Dialog */}
       {showTokenDialog && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <motion.div
@@ -949,9 +887,9 @@ export default function ProjectEditor() {
             )}
 
             <div className="text-xs text-muted-foreground mb-4 space-y-0.5">
-              <p>📌 للحصول على توكن:</p>
+              <p>للحصول على توكن:</p>
               <p className="mr-4">1. اذهب إلى <a href="https://discord.com/developers/applications" target="_blank" className="text-primary hover:underline">Discord Developer Portal</a></p>
-              <p className="mr-4">2. اختر تطبيق → Bot → Copy Token</p>
+              <p className="mr-4">2. اختر تطبيق - Bot - Copy Token</p>
             </div>
 
             <div className="flex gap-2">

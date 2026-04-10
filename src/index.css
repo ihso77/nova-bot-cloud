@@ -128,3 +128,90 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.5);
 }
+
+/* CodeMirror Editor Styles */
+.cm-editor-wrapper .cm-editor {
+  height: 100%;
+  background: #0d0d0d !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-scroller {
+  overflow: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-content {
+  padding: 8px 0 !important;
+  caret-color: #a78bfa !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-gutters {
+  background: #0d0d0d !important;
+  border-right: 1px solid #2a2a2a !important;
+  color: #555 !important;
+  min-width: 40px !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-gutter-lint {
+  width: 0 !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-activeLineGutter {
+  background: #1a1a1a !important;
+  color: #888 !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-activeLine {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-selectionMatch {
+  background: rgba(167, 139, 250, 0.2) !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-cursor {
+  border-left-color: #a78bfa !important;
+  border-left-width: 2px !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-selectionBackground {
+  background: rgba(167, 139, 250, 0.25) !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-focused .cm-selectionBackground {
+  background: rgba(167, 139, 250, 0.35) !important;
+}
+
+.cm-editor-wrapper .cm-editor .cm-matchingBracket {
+  background: rgba(167, 139, 250, 0.3) !important;
+  outline: 1px solid rgba(167, 139, 250, 0.5) !important;
+}
+
+/* CodeMirror dark theme token colors */
+.cm-editor-wrapper .cm-editor .ͼb {
+  color: #d4d4d4;
+}
+.cm-editor-wrapper .cm-editor .ͼ1j {
+  color: #c586c0;
+}
+.cm-editor-wrapper .cm-editor .ͼ2 {
+  color: #569cd6;
+}
+.cm-editor-wrapper .cm-editor .ͼk {
+  color: #ce9178;
+}
+.cm-editor-wrapper .cm-editor .ͼ4 {
+  color: #6a9955;
+}
+.cm-editor-wrapper .cm-editor .ͼ6 {
+  color: #dcdcaa;
+}
+.cm-editor-wrapper .cm-editor .ͼ1g {
+  color: #4ec9b0;
+}
+.cm-editor-wrapper .cm-editor .ͼ8 {
+  color: #d16969;
+}
