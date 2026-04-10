@@ -13,6 +13,7 @@ import ProjectEditor from "./pages/ProjectEditor";
 import Checkout from "./pages/Checkout";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import GiftPopup from "./components/GiftPopup";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/admin" element={<Admin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <GiftPopup />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
