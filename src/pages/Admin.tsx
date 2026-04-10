@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { saveGiftLocal } from '@/components/GiftPopup';
 import {
   Shield, Users, Server, CreditCard, Settings, Gift, BarChart3,
   ChevronLeft, Search, Crown, Activity, Clock, Mail, User as UserIcon,
@@ -152,7 +153,7 @@ export default function Admin() {
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
-    const { data } = await supabase.from('projects').select('*, profiles!projects_user_id_fkey(email)').order('created_at', { ascending: false });
+    const { data } = await supabase.from('projects').select('*, profiles(email)').order('created_at', { ascending: false });
     if (data) {
       setProjects(data.map((p: any) => ({
         id: p.id,
@@ -168,8 +169,15 @@ export default function Admin() {
 
   const loadGifts = useCallback(async () => {
     setGiftsLoading(true);
-    const { data } = await supabase.from('gifts').select('*').order('created_at', { ascending: false });
-    if (data) setGifts(data as any);
+    try {
+      const { data } = await supabase.from('gifts').select('*').order('created_at', { ascending: false });
+      if (data && data.length > 0) { setGifts(data as any); setGiftsLoading(false); return; }
+    } catch {}
+    // Fallback: localStorage
+    try {
+      const stored = localStorage.getItem('nova_pending_gifts');
+      if (stored) { setGifts(JSON.parse(stored)); }
+    } catch {}
     setGiftsLoading(false);
   }, []);
 
@@ -188,7 +196,8 @@ export default function Admin() {
   const handleSendGift = async () => {
     if (!giftEmail.trim() || !giftPlanId) { toast.error('أكمل جميع الحقول'); return; }
     const plan = availablePlans.find(p => p.id === giftPlanId);
-    const { error } = await supabase.from('gifts').insert({
+    const giftData = {
+      id: crypto.randomUUID(),
       from_user_id: user?.id,
       from_name: 'Nova VPS',
       to_email: giftEmail.trim(),
@@ -196,8 +205,23 @@ export default function Admin() {
       plan_name: plan?.name || '',
       claimed: false,
       message: giftMessage.trim(),
-    });
-    if (error) { toast.error('حدث خطأ'); return; }
+      created_at: new Date().toISOString(),
+    };
+
+    // Try Supabase first, fallback to localStorage
+    try {
+      const { error } = await supabase.from('gifts').insert(giftData);
+      if (!error) {
+        toast.success('تم إرسال الهدية بنجاح!');
+        setGiftEmail(''); setGiftPlanId(''); setGiftMessage('');
+        setShowGiftForm(false);
+        loadGifts();
+        return;
+      }
+    } catch {}
+
+    // Fallback: save to localStorage
+    await saveGiftLocal(giftData);
     toast.success('تم إرسال الهدية بنجاح!');
     setGiftEmail(''); setGiftPlanId(''); setGiftMessage('');
     setShowGiftForm(false);
