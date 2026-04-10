@@ -9,8 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
   Eye, EyeOff, Copy, Download, RotateCcw, ChevronDown, ChevronUp,
@@ -74,51 +72,27 @@ function getFileIcon(name: string) {
   return colors[ext || ''] || 'text-gray-400';
 }
 
-function getSyntaxLang(filename: string): string {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  const map: Record<string, string> = {
-    js: 'javascript', ts: 'typescript', py: 'python', json: 'json',
-    yml: 'yaml', yaml: 'yaml', md: 'markdown', txt: 'text', env: 'bash',
-    sh: 'bash', html: 'html', css: 'css',
-  };
-  return map[ext || ''] || 'text';
-}
-
 function lineCount(s: string): number {
   return s ? s.split('\n').length : 1;
 }
 
-// --- Editor Component with synced line numbers + syntax highlighting ---
-function EditorWithLines({ value, onChange, language, wordWrap }: {
+// --- Editor Component with synced line numbers ---
+function EditorWithLines({ value, onChange, wordWrap }: {
   value: string;
   onChange: (v: string) => void;
-  language: string;
   wordWrap: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumRef = useRef<HTMLDivElement>(null);
-  const [syncScroll, setSyncScroll] = useState(false);
 
-  const lines = value.split('\n');
-  const lineCountVal = lines.length;
+  const lineCountVal = value ? value.split('\n').length : 1;
 
-  // Sync scroll: textarea -> highlighter + line numbers
+  // Sync scroll: textarea -> line numbers
   const handleScroll = () => {
-    if (!syncScroll) return;
     const ta = textareaRef.current;
-    if (ta && highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
     if (ta && lineNumRef.current) {
       lineNumRef.current.scrollTop = ta.scrollTop;
     }
-  };
-
-  // Allow Enter key and all normal behavior
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
   };
 
   // Handle Tab key for indentation
@@ -130,84 +104,72 @@ function EditorWithLines({ value, onChange, language, wordWrap }: {
       const end = ta.selectionEnd;
       const newValue = value.substring(0, start) + '  ' + value.substring(end);
       onChange(newValue);
-      // Restore cursor position after React re-render
       requestAnimationFrame(() => {
         ta.selectionStart = ta.selectionEnd = start + 2;
       });
     }
+    // Auto-close brackets
+    const pairs: Record<string, string> = { '(': ')', '{': '}', '[': ']', '"': '"', "'": "'", '`': '`' };
+    if (pairs[e.key]) {
+      const ta = e.currentTarget;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      if (start !== end) {
+        // Wrap selection
+        e.preventDefault();
+        const selected = value.substring(start, end);
+        const newValue = value.substring(0, start) + e.key + selected + pairs[e.key] + value.substring(end);
+        onChange(newValue);
+        requestAnimationFrame(() => {
+          ta.selectionStart = start + 1;
+          ta.selectionEnd = end + 1;
+        });
+      } else {
+        e.preventDefault();
+        const newValue = value.substring(0, start) + e.key + pairs[e.key] + value.substring(end);
+        onChange(newValue);
+        requestAnimationFrame(() => {
+          ta.selectionStart = ta.selectionEnd = start + 1;
+        });
+      }
+    }
   };
 
-  // Enable scroll sync after mount
-  useEffect(() => {
-    const t = setTimeout(() => setSyncScroll(true), 100);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden code-editor-area">
-      {/* Line numbers - inside the field */}
+    <div className="flex-1 flex min-h-0 overflow-hidden">
+      {/* Line numbers */}
       <div
         ref={lineNumRef}
         className="overflow-hidden flex-shrink-0 select-none bg-[#0d0d0d] border-l border-[#2a2a2a] pl-3 pr-2 py-2"
         style={{ width: '3.5rem' }}
       >
-        <div className="text-[13px] leading-[1.6rem] font-mono text-[#555]">
+        <div className="text-[13px] leading-[1.6rem] font-mono text-[#444] text-right">
           {Array.from({ length: lineCountVal }, (_, i) => (
-            <div key={i + 1} className="text-right">{i + 1}</div>
+            <div key={i + 1}>{i + 1}</div>
           ))}
-          {/* Extra empty line for scrolling space */}
-          <div>&nbsp;</div>
         </div>
       </div>
 
-      {/* Code area */}
-      <div className="flex-1 relative min-w-0 overflow-hidden">
-        {/* Syntax highlighted background (read-only, pointer-events-none) */}
-        <div
-          ref={highlightRef}
-          className="absolute inset-0 overflow-hidden p-2 syntax-highlight-layer"
-        >
-          <SyntaxHighlighter
-            language={language}
-            style={oneDark}
-            customStyle={{
-              background: 'transparent',
-              padding: 0,
-              margin: 0,
-              fontSize: '13px',
-              lineHeight: '1.6rem',
-              whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-              wordBreak: wordWrap ? 'break-all' : 'normal',
-              overflow: 'visible',
-              userSelect: 'none',
-            }}
-            showLineNumbers={false}
-            wrapLines={true}
-          >
-            {value || '\n'}
-          </SyntaxHighlighter>
-        </div>
-
-        {/* Actual editable textarea */}
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleChange}
-          onScroll={handleScroll}
-          onKeyDown={handleKeyDown}
-          className="absolute inset-0 w-full h-full bg-transparent p-2 font-mono text-[13px] resize-none focus:outline-none text-transparent caret-white leading-[1.6rem] z-10"
-          dir="ltr"
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          style={{
-            whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-            wordBreak: wordWrap ? 'break-all' : 'normal',
-            overflow: 'auto',
-            tabSize: 2,
-          }}
-        />
-      </div>
+      {/* Textarea */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        className="flex-1 bg-[#0d0d0d] text-[#d4d4d4] p-2 font-mono text-[13px] resize-none focus:outline-none leading-[1.6rem]"
+        dir="ltr"
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
+        style={{
+          whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+          wordBreak: wordWrap ? 'break-all' : 'normal',
+          overflow: 'auto',
+          tabSize: 2,
+          caretColor: '#a78bfa',
+        }}
+      />
     </div>
   );
 }
@@ -875,7 +837,6 @@ export default function ProjectEditor() {
                   <EditorWithLines
                     value={editorContent}
                     onChange={setEditorContent}
-                    language={getSyntaxLang(selectedFile.file_name)}
                     wordWrap={wordWrap}
                   />
                 </div>

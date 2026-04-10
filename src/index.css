@@ -114,20 +114,6 @@
   animation: gridMove 20s linear infinite;
 }
 
-/* Code editor: completely prevent selection on syntax highlight layer */
-.code-editor-area .syntax-highlight-layer,
-.code-editor-area .syntax-highlight-layer *,
-.code-editor-area .syntax-highlight-layer code,
-.code-editor-area .syntax-highlight-layer span,
-.code-editor-area .syntax-highlight-layer pre {
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-  pointer-events: none !important;
-  cursor: default;
-}
-
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
