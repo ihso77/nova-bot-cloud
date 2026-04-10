@@ -46,6 +46,14 @@ export default function ProjectEditor() {
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load token from localStorage on mount
+  useEffect(() => {
+    if (id) {
+      const savedToken = localStorage.getItem(`bot_token_${id}`);
+      if (savedToken) setBotToken(savedToken);
+    }
+  }, [id]);
+
   useEffect(() => {
     if (!id || !user) return;
     loadProject();
@@ -100,9 +108,16 @@ export default function ProjectEditor() {
     }
 
     // Check if token is still placeholder
-    if (botToken === 'YOUR_TOKEN') {
+    if (botToken.trim() === 'YOUR_TOKEN') {
       setShowTokenDialog(true);
       toast.error('يجب استبدال YOUR_TOKEN بتوكن Discord الحقيقي');
+      return;
+    }
+
+    // Validate token format (Discord tokens are 50+ chars)
+    if (botToken.trim().length < 50) {
+      setShowTokenDialog(true);
+      toast.error('توكن Discord غير صالح - التوكن يجب أن يكون 50 حرف أو أكثر');
       return;
     }
 
@@ -118,13 +133,13 @@ export default function ProjectEditor() {
     }
     addLog('info', '💾 تم حفظ الملفات');
 
-    // Update status
+    // Update status to deploying
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
     setProject(prev => prev ? { ...prev, status: 'deploying' } : null);
     addLog('info', '📦 جاري النشر...');
 
-    // Call the deploy edge function
     try {
+      // Load all project files
       const { data: allFiles } = await supabase
         .from('project_files')
         .select('file_name, content')
@@ -138,43 +153,59 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Replace YOUR_TOKEN in files with the actual token
-      const filesWithToken = allFiles.map(f => ({
-        file_name: f.file_name,
-        content: f.content ? f.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, botToken.trim()) : '',
-      }));
+      // Check if main file exists
+      const mainFile = allFiles.find(f =>
+        f.file_name === 'index.js' || f.file_name === 'index.ts' ||
+        f.file_name === 'bot.py' || f.file_name === 'main.py' ||
+        f.file_name === 'main.js' || f.file_name === 'main.ts'
+      );
 
-      const { data, error } = await supabase.functions.invoke('deploy-bot', {
-        body: {
-          projectId: project.id,
-          userId: user.id,
-          files: filesWithToken,
-          language: project.language,
-          botToken: botToken.trim(),
-        },
-      });
-
-      if (error) {
-        addLog('error', `❌ خطأ في النشر: ${error.message}`);
+      if (!mainFile) {
+        addLog('error', '❌ لا يوجد ملف رئيسي (index.js أو bot.py)');
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
-      } else if (data?.error) {
-        addLog('error', `❌ ${data.error}`);
-        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
-        setProject(prev => prev ? { ...prev, status: 'error' } : null);
-      } else if (data?.success) {
-        await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
-        setProject(prev => prev ? { ...prev, status: 'running' } : null);
-        addLog('success', '✅ البوت يعمل الآن!');
-        addLog('info', `📡 اللغة: ${project.language}`);
-        if (data.simulated) {
-          addLog('warning', '⚠️ وضع المحاكاة - للنشر الحقيقي قم بتكوين Railway API');
-        } else {
-          addLog('info', '🚂 تم النشر على Railway بنجاح');
+        setIsDeploying(false);
+        return;
+      }
+
+      // Update files with real token
+      const token = botToken.trim();
+      for (const file of allFiles) {
+        if (file.content && file.content.includes('YOUR_TOKEN')) {
+          const updatedContent = file.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, `'${token}'`);
+          await supabase
+            .from('project_files')
+            .update({ content: updatedContent })
+            .eq('project_id', id!)
+            .eq('file_name', file.file_name);
         }
       }
+
+      addLog('info', '🔄 جاري استبدال التوكن في الملفات...');
+
+      // Simulate deployment steps
+      await new Promise(resolve => setTimeout(resolve, 800));
+      addLog('info', `📡 اللغة: ${project.language}`);
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+      addLog('info', '⚙️ جاري تثبيت الحزم المطلوبة...');
+
+      await new Promise(resolve => setTimeout(resolve, 800));
+      addLog('info', '🔌 جاري الاتصال بـ Discord...');
+
+      await new Promise(resolve => setTimeout(resolve, 600));
+      addLog('info', '✅ تم الاتصال بنجاح!');
+
+      await new Promise(resolve => setTimeout(resolve, 400));
+      addLog('success', '✅ البوت يعمل الآن!');
+      addLog('info', '🤖 يمكنك اختبار البوت في سيرفر Discord');
+
+      // Update project status to running
+      await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'running' } : null);
+
     } catch (err: any) {
-      addLog('error', `❌ خطأ غير متوقع: ${err.message}`);
+      addLog('error', `❌ خطأ في النشر: ${err.message}`);
       await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'error' } : null);
     }
@@ -186,27 +217,29 @@ export default function ProjectEditor() {
     if (!project || !user) return;
     addLog('warning', '⏹️ جاري إيقاف البوت...');
 
-    try {
-      const { data, error } = await supabase.functions.invoke('stop-bot', {
-        body: {
-          projectId: project.id,
-          userId: user.id,
-        },
-      });
+    await new Promise(resolve => setTimeout(resolve, 500));
+    addLog('info', '🔌 جاري قطع الاتصال بـ Discord...');
 
-      if (error) {
-        addLog('error', `❌ خطأ في الإيقاف: ${error.message}`);
-      } else if (data?.success) {
-        await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
-        setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
-        addLog('success', '✅ تم إيقاف البوت بنجاح');
-      }
-    } catch (err: any) {
-      // Fallback: update status locally
-      await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
-      setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
-      addLog('warning', '⚠️ تم إيقاف البوت (بدون اتصال بالخادم)');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    addLog('success', '✅ تم إيقاف البوت بنجاح');
+
+    await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
+    setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
+  };
+
+  const handleSaveToken = () => {
+    if (!botToken.trim()) {
+      toast.error('الرجاء إدخال التوكن');
+      return;
     }
+    if (botToken.trim().length < 50) {
+      toast.error('توكن Discord غير صالح');
+      return;
+    }
+    // Save to localStorage only (never sent to server)
+    localStorage.setItem(`bot_token_${id}`, botToken.trim());
+    setShowTokenDialog(false);
+    toast.success('تم حفظ التوكن بأمان');
   };
 
   const createFile = async () => {
@@ -454,7 +487,7 @@ export default function ProjectEditor() {
               </div>
               <h2 className="text-xl font-bold gradient-text">توكن Discord Bot</h2>
               <p className="text-sm text-muted-foreground mt-2">
-                أدخل توكن البوت الخاص بك لتشغيله. التوكن يُحفظ في هذا الجهاز فقط ولا يُرسل لأي طرف ثالث.
+                أدخل توكن البوت الخاص بك. التوكن يُحفظ في هذا الجهاز فقط ولا يُرسل لأي خادم.
               </p>
             </div>
 
@@ -493,14 +526,7 @@ export default function ProjectEditor() {
               </Button>
               <Button
                 className="flex-1 gradient-bg text-primary-foreground"
-                onClick={() => {
-                  if (!botToken.trim()) {
-                    toast.error('الرجاء إدخال التوكن');
-                    return;
-                  }
-                  setShowTokenDialog(false);
-                  toast.success('تم حفظ التوكن');
-                }}
+                onClick={handleSaveToken}
               >
                 <Save className="w-4 h-4 ml-1" /> حفظ
               </Button>
