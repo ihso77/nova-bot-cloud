@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3,
+  Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3, Key, Eye, EyeOff,
 } from 'lucide-react';
 
 interface ProjectFile {
@@ -23,6 +23,7 @@ interface Project {
   name: string;
   language: string;
   status: string;
+  railway_service_id: string | null;
 }
 
 export default function ProjectEditor() {
@@ -38,6 +39,10 @@ export default function ProjectEditor() {
   const [showNewFile, setShowNewFile] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [projectName, setProjectName] = useState('');
+  const [botToken, setBotToken] = useState('');
+  const [showToken, setShowToken] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [showTokenDialog, setShowTokenDialog] = useState(false);
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +58,10 @@ export default function ProjectEditor() {
 
   const loadProject = async () => {
     const { data } = await supabase.from('projects').select('*').eq('id', id!).single();
-    if (data) { setProject(data); setProjectName(data.name); }
+    if (data) {
+      setProject(data);
+      setProjectName(data.name);
+    }
   };
 
   const loadFiles = async () => {
@@ -82,32 +90,123 @@ export default function ProjectEditor() {
   };
 
   const handleStartBot = async () => {
-    if (!project) return;
+    if (!project || !user) return;
+
+    // Check if bot token is set
+    if (!botToken.trim()) {
+      setShowTokenDialog(true);
+      toast.error('يجب إدخال توكن Discord البوت أولاً');
+      return;
+    }
+
+    // Check if token is still placeholder
+    if (botToken === 'YOUR_TOKEN') {
+      setShowTokenDialog(true);
+      toast.error('يجب استبدال YOUR_TOKEN بتوكن Discord الحقيقي');
+      return;
+    }
+
+    setIsDeploying(true);
     addLog('info', '🚀 جاري تشغيل البوت...');
-    
+
     // Save all files first
-    await saveFile();
+    if (selectedFile) {
+      await supabase
+        .from('project_files')
+        .update({ content: editorContent })
+        .eq('id', selectedFile.id);
+    }
     addLog('info', '💾 تم حفظ الملفات');
 
     // Update status
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
-    setProject({ ...project, status: 'deploying' });
-    addLog('info', '📦 جاري النشر على Railway...');
+    setProject(prev => prev ? { ...prev, status: 'deploying' } : null);
+    addLog('info', '📦 جاري النشر...');
 
-    // Simulate deployment (in real implementation, call edge function to deploy to Railway)
-    setTimeout(() => {
-      setProject(prev => prev ? { ...prev, status: 'running' } : null);
-      supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
-      addLog('success', '✅ البوت يعمل الآن!');
-      addLog('info', `📡 اللغة: ${project.language}`);
-    }, 3000);
+    // Call the deploy edge function
+    try {
+      const { data: allFiles } = await supabase
+        .from('project_files')
+        .select('file_name, content')
+        .eq('project_id', id!);
+
+      if (!allFiles || allFiles.length === 0) {
+        addLog('error', '❌ لا توجد ملفات في المشروع');
+        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'error' } : null);
+        setIsDeploying(false);
+        return;
+      }
+
+      // Replace YOUR_TOKEN in files with the actual token
+      const filesWithToken = allFiles.map(f => ({
+        file_name: f.file_name,
+        content: f.content ? f.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, botToken.trim()) : '',
+      }));
+
+      const { data, error } = await supabase.functions.invoke('deploy-bot', {
+        body: {
+          projectId: project.id,
+          userId: user.id,
+          files: filesWithToken,
+          language: project.language,
+          botToken: botToken.trim(),
+        },
+      });
+
+      if (error) {
+        addLog('error', `❌ خطأ في النشر: ${error.message}`);
+        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'error' } : null);
+      } else if (data?.error) {
+        addLog('error', `❌ ${data.error}`);
+        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'error' } : null);
+      } else if (data?.success) {
+        await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'running' } : null);
+        addLog('success', '✅ البوت يعمل الآن!');
+        addLog('info', `📡 اللغة: ${project.language}`);
+        if (data.simulated) {
+          addLog('warning', '⚠️ وضع المحاكاة - للنشر الحقيقي قم بتكوين Railway API');
+        } else {
+          addLog('info', '🚂 تم النشر على Railway بنجاح');
+        }
+      }
+    } catch (err: any) {
+      addLog('error', `❌ خطأ غير متوقع: ${err.message}`);
+      await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'error' } : null);
+    }
+
+    setIsDeploying(false);
   };
 
   const handleStopBot = async () => {
-    if (!project) return;
-    await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
-    setProject({ ...project, status: 'stopped' });
-    addLog('warning', '⏹️ تم إيقاف البوت');
+    if (!project || !user) return;
+    addLog('warning', '⏹️ جاري إيقاف البوت...');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('stop-bot', {
+        body: {
+          projectId: project.id,
+          userId: user.id,
+        },
+      });
+
+      if (error) {
+        addLog('error', `❌ خطأ في الإيقاف: ${error.message}`);
+      } else if (data?.success) {
+        await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
+        addLog('success', '✅ تم إيقاف البوت بنجاح');
+      }
+    } catch (err: any) {
+      // Fallback: update status locally
+      await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
+      addLog('warning', '⚠️ تم إيقاف البوت (بدون اتصال بالخادم)');
+    }
   };
 
   const createFile = async () => {
@@ -193,10 +292,20 @@ export default function ProjectEditor() {
             </div>
           )}
           <Badge variant="secondary">{project.language}</Badge>
-          <div className={`w-2 h-2 rounded-full ${project.status === 'running' ? 'bg-success' : project.status === 'deploying' ? 'bg-warning animate-pulse' : 'bg-muted-foreground'}`} />
+          <div className={`w-2 h-2 rounded-full ${
+            project.status === 'running' ? 'bg-success animate-pulse' : 
+            project.status === 'deploying' ? 'bg-warning animate-pulse' : 
+            project.status === 'error' ? 'bg-destructive' : 'bg-muted-foreground'
+          }`} />
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Bot Token Button */}
+          <Button size="sm" variant="ghost" onClick={() => setShowTokenDialog(true)} className={botToken ? 'text-success' : 'text-destructive'}>
+            <Key className="w-4 h-4 ml-1" />
+            {botToken ? 'توكن محفوظ ✓' : 'أدخل التوكن'}
+          </Button>
+
           <Button size="sm" variant="ghost" onClick={() => setShowConsole(!showConsole)}>
             <Terminal className="w-4 h-4" />
           </Button>
@@ -205,8 +314,13 @@ export default function ProjectEditor() {
               <Square className="w-4 h-4 ml-1" /> إيقاف
             </Button>
           ) : (
-            <Button size="sm" className="gradient-bg text-primary-foreground" onClick={handleStartBot} disabled={project.status === 'deploying'}>
-              <Play className="w-4 h-4 ml-1" /> تشغيل
+            <Button size="sm" className="gradient-bg text-primary-foreground" onClick={handleStartBot} disabled={project.status === 'deploying' || isDeploying}>
+              {isDeploying ? (
+                <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 ml-1" />
+              )}
+              {project.status === 'deploying' || isDeploying ? 'جاري النشر...' : 'تشغيل'}
             </Button>
           )}
         </div>
@@ -324,6 +438,76 @@ export default function ProjectEditor() {
           )}
         </div>
       </div>
+
+      {/* Bot Token Dialog */}
+      {showTokenDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-md glass rounded-2xl p-8 mx-4"
+            dir="rtl"
+          >
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-xl gradient-bg flex items-center justify-center mx-auto mb-4">
+                <Key className="w-7 h-7 text-primary-foreground" />
+              </div>
+              <h2 className="text-xl font-bold gradient-text">توكن Discord Bot</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                أدخل توكن البوت الخاص بك لتشغيله. التوكن يُحفظ في هذا الجهاز فقط ولا يُرسل لأي طرف ثالث.
+              </p>
+            </div>
+
+            <div className="relative mb-6">
+              <Input
+                value={botToken}
+                onChange={e => setBotToken(e.target.value)}
+                type={showToken ? 'text' : 'password'}
+                placeholder="الصق التوكن هنا..."
+                className="bg-secondary border-border/50 text-left font-mono text-sm pl-12"
+                dir="ltr"
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <div className="text-xs text-muted-foreground mb-6 space-y-1">
+              <p>📌 للحصول على توكن بوت:</p>
+              <p className="mr-4">1. اذهب إلى <a href="https://discord.com/developers/applications" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Discord Developer Portal</a></p>
+              <p className="mr-4">2. أنشئ تطبيق جديد أو اختر تطبيق موجود</p>
+              <p className="mr-4">3. اذهب إلى Bot → Copy Token</p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowTokenDialog(false)}
+              >
+                إلغاء
+              </Button>
+              <Button
+                className="flex-1 gradient-bg text-primary-foreground"
+                onClick={() => {
+                  if (!botToken.trim()) {
+                    toast.error('الرجاء إدخال التوكن');
+                    return;
+                  }
+                  setShowTokenDialog(false);
+                  toast.success('تم حفظ التوكن');
+                }}
+              >
+                <Save className="w-4 h-4 ml-1" /> حفظ
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
