@@ -88,6 +88,129 @@ function lineCount(s: string): number {
   return s ? s.split('\n').length : 1;
 }
 
+// --- Editor Component with synced line numbers + syntax highlighting ---
+function EditorWithLines({ value, onChange, language, wordWrap }: {
+  value: string;
+  onChange: (v: string) => void;
+  language: string;
+  wordWrap: boolean;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const lineNumRef = useRef<HTMLDivElement>(null);
+  const [syncScroll, setSyncScroll] = useState(false);
+
+  const lines = value.split('\n');
+  const lineCountVal = lines.length;
+
+  // Sync scroll: textarea -> highlighter + line numbers
+  const handleScroll = () => {
+    if (!syncScroll) return;
+    const ta = textareaRef.current;
+    if (ta && highlightRef.current) {
+      highlightRef.current.scrollTop = ta.scrollTop;
+      highlightRef.current.scrollLeft = ta.scrollLeft;
+    }
+    if (ta && lineNumRef.current) {
+      lineNumRef.current.scrollTop = ta.scrollTop;
+    }
+  };
+
+  // Allow Enter key and all normal behavior
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  };
+
+  // Handle Tab key for indentation
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const newValue = value.substring(0, start) + '  ' + value.substring(end);
+      onChange(newValue);
+      // Restore cursor position after React re-render
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = start + 2;
+      });
+    }
+  };
+
+  // Enable scroll sync after mount
+  useEffect(() => {
+    const t = setTimeout(() => setSyncScroll(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="flex-1 flex min-h-0 overflow-hidden">
+      {/* Line numbers - inside the field */}
+      <div
+        ref={lineNumRef}
+        className="overflow-hidden flex-shrink-0 select-none bg-[#1e1e2e] border-l border-[#333] pl-3 pr-2 py-2"
+        style={{ width: '3.5rem' }}
+      >
+        <div className="text-[13px] leading-[1.6rem] font-mono text-[#555]">
+          {Array.from({ length: lineCountVal }, (_, i) => (
+            <div key={i + 1} className="text-right">{i + 1}</div>
+          ))}
+          {/* Extra empty line for scrolling space */}
+          <div>&nbsp;</div>
+        </div>
+      </div>
+
+      {/* Code area */}
+      <div className="flex-1 relative min-w-0 overflow-hidden">
+        {/* Syntax highlighted background (read-only, pointer-events-none) */}
+        <div
+          ref={highlightRef}
+          className="absolute inset-0 overflow-hidden pointer-events-none p-2"
+        >
+          <SyntaxHighlighter
+            language={language}
+            style={oneDark}
+            customStyle={{
+              background: 'transparent',
+              padding: 0,
+              margin: 0,
+              fontSize: '13px',
+              lineHeight: '1.6rem',
+              whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+              wordBreak: wordWrap ? 'break-all' : 'normal',
+              overflow: 'visible',
+            }}
+            showLineNumbers={false}
+            wrapLines={true}
+          >
+            {value || '\n'}
+          </SyntaxHighlighter>
+        </div>
+
+        {/* Actual editable textarea */}
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleChange}
+          onScroll={handleScroll}
+          onKeyDown={handleKeyDown}
+          className="absolute inset-0 w-full h-full bg-transparent p-2 font-mono text-[13px] resize-none focus:outline-none text-transparent caret-white leading-[1.6rem]"
+          dir="ltr"
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          style={{
+            whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
+            wordBreak: wordWrap ? 'break-all' : 'normal',
+            overflow: 'auto',
+            tabSize: 2,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function ProjectEditor() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -746,41 +869,14 @@ export default function ProjectEditor() {
                   </div>
                 </div>
 
-                {/* Code display with syntax highlighting overlay */}
-                <div className="w-full h-full bg-[#1e1e2e] pt-10" dir="ltr">
-                  <div className="flex h-full">
-                    {/* Line numbers */}
-                    <div className="select-none text-right pr-4 pl-2 py-2 text-muted-foreground/40 text-sm font-mono leading-relaxed border-l border-border/20 min-w-[3rem]">
-                      {Array.from({ length: lineCount(editorContent) }, (_, i) => (
-                        <div key={i}>{i + 1}</div>
-                      ))}
-                    </div>
-                    {/* Editor area */}
-                    <div className="flex-1 relative min-w-0">
-                      {/* Syntax highlighted background */}
-                      <div className="absolute inset-0 overflow-auto pointer-events-none" style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}>
-                        <pre className="p-2 text-sm leading-relaxed font-mono">
-                          <SyntaxHighlighter
-                            language={getSyntaxLang(selectedFile.file_name)}
-                            style={oneDark}
-                            customStyle={{ background: 'transparent', padding: 0, margin: 0, fontSize: '0.875rem', lineHeight: '1.625rem', whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
-                            showLineNumbers={false}
-                          >
-                            {editorContent || ' '}
-                          </SyntaxHighlighter>
-                        </pre>
-                      </div>
-                      {/* Actual editable textarea (transparent) */}
-                      <textarea
-                        value={editorContent}
-                        onChange={e => setEditorContent(e.target.value)}
-                        className="w-full h-full bg-transparent p-2 font-mono text-sm resize-none focus:outline-none text-transparent caret-foreground leading-relaxed"
-                        dir="ltr"
-                        spellCheck={false}
-                        style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre', wordBreak: 'break-all' }}
-                      />
-                    </div>
-                  </div>
+                {/* Code editor */}
+                <div className="w-full h-full bg-[#1e1e2e] pt-10 flex flex-col" dir="ltr">
+                  <EditorWithLines
+                    value={editorContent}
+                    onChange={setEditorContent}
+                    language={getSyntaxLang(selectedFile.file_name)}
+                    wordWrap={wordWrap}
+                  />
                 </div>
               </>
             ) : (
@@ -854,7 +950,7 @@ export default function ProjectEditor() {
             dir="rtl"
           >
             <div className="text-center mb-5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-[hsl(215,70%,30%)] flex items-center justify-center mx-auto mb-3">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
               <h2 className="text-lg font-bold">توكن Discord</h2>
