@@ -11,6 +11,8 @@ import {
   Play, Square, Plus, FileText, Trash2, Save, Upload, Terminal, X, Edit3, Key, Eye, EyeOff,
 } from 'lucide-react';
 
+const PROXY_URL = 'https://proxy-production-46a1.up.railway.app';
+
 interface ProjectFile {
   id: string;
   file_name: string;
@@ -46,7 +48,6 @@ export default function ProjectEditor() {
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load token from localStorage on mount
   useEffect(() => {
     if (id) {
       const savedToken = localStorage.getItem(`bot_token_${id}`);
@@ -100,31 +101,22 @@ export default function ProjectEditor() {
   const handleStartBot = async () => {
     if (!project || !user) return;
 
-    // Check if bot token is set
     if (!botToken.trim()) {
       setShowTokenDialog(true);
       toast.error('يجب إدخال توكن Discord البوت أولاً');
       return;
     }
 
-    // Check if token is still placeholder
-    if (botToken.trim() === 'YOUR_TOKEN') {
+    if (botToken.trim() === 'YOUR_TOKEN' || botToken.trim().length < 50) {
       setShowTokenDialog(true);
-      toast.error('يجب استبدال YOUR_TOKEN بتوكن Discord الحقيقي');
-      return;
-    }
-
-    // Validate token format (Discord tokens are 50+ chars)
-    if (botToken.trim().length < 50) {
-      setShowTokenDialog(true);
-      toast.error('توكن Discord غير صالح - التوكن يجب أن يكون 50 حرف أو أكثر');
+      toast.error('توكن Discord غير صالح');
       return;
     }
 
     setIsDeploying(true);
     addLog('info', '🚀 جاري تشغيل البوت...');
 
-    // Save all files first
+    // Save current file
     if (selectedFile) {
       await supabase
         .from('project_files')
@@ -133,10 +125,10 @@ export default function ProjectEditor() {
     }
     addLog('info', '💾 تم حفظ الملفات');
 
-    // Update status to deploying
+    // Update status
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
     setProject(prev => prev ? { ...prev, status: 'deploying' } : null);
-    addLog('info', '📦 جاري النشر...');
+    addLog('info', '📦 جاري النشر على Railway...');
 
     try {
       // Load all project files
@@ -153,7 +145,7 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Check if main file exists
+      // Get the main file
       const mainFile = allFiles.find(f =>
         f.file_name === 'index.js' || f.file_name === 'index.ts' ||
         f.file_name === 'bot.py' || f.file_name === 'main.py' ||
@@ -168,44 +160,50 @@ export default function ProjectEditor() {
         return;
       }
 
-      // Update files with real token
-      const token = botToken.trim();
-      for (const file of allFiles) {
-        if (file.content && file.content.includes('YOUR_TOKEN')) {
-          const updatedContent = file.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, `'${token}'`);
-          await supabase
-            .from('project_files')
-            .update({ content: updatedContent })
-            .eq('project_id', id!)
-            .eq('file_name', file.file_name);
+      // Replace YOUR_TOKEN with real token
+      const code = mainFile.content ? mainFile.content.replace(/['"]YOUR_TOKEN['"]|YOUR_TOKEN/g, botToken.trim()) : '';
+
+      addLog('info', '📡 جاري إنشاء خدمة على Railway...');
+
+      // Call the proxy to deploy
+      const proxyRes = await fetch(`${PROXY_URL}/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botName: project.name,
+          botToken: botToken.trim(),
+          language: project.language,
+          code,
+        }),
+      });
+
+      const proxyData = await proxyRes.json();
+
+      if (!proxyRes.ok || proxyData.error) {
+        addLog('error', `❌ خطأ في النشر: ${proxyData.error || 'خطأ غير معروف'}`);
+        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'error' } : null);
+      } else {
+        // Save the railway service ID
+        const serviceId = proxyData.serviceId;
+        if (serviceId) {
+          await supabase.from('projects').update({
+            status: 'running',
+            railway_service_id: serviceId,
+          }).eq('id', project.id);
+          setProject(prev => prev ? { ...prev, status: 'running', railway_service_id: serviceId } : null);
+        } else {
+          await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
+          setProject(prev => prev ? { ...prev, status: 'running' } : null);
         }
+
+        addLog('success', '✅ البوت يعمل الآن على Railway!');
+        addLog('info', `📡 اللغة: ${project.language}`);
+        addLog('info', `🚂 Service ID: ${serviceId || 'N/A'}`);
+        addLog('info', '🤖 يمكنك اختبار البوت في سيرفر Discord');
       }
-
-      addLog('info', '🔄 جاري استبدال التوكن في الملفات...');
-
-      // Simulate deployment steps
-      await new Promise(resolve => setTimeout(resolve, 800));
-      addLog('info', `📡 اللغة: ${project.language}`);
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-      addLog('info', '⚙️ جاري تثبيت الحزم المطلوبة...');
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-      addLog('info', '🔌 جاري الاتصال بـ Discord...');
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-      addLog('info', '✅ تم الاتصال بنجاح!');
-
-      await new Promise(resolve => setTimeout(resolve, 400));
-      addLog('success', '✅ البوت يعمل الآن!');
-      addLog('info', '🤖 يمكنك اختبار البوت في سيرفر Discord');
-
-      // Update project status to running
-      await supabase.from('projects').update({ status: 'running' }).eq('id', project.id);
-      setProject(prev => prev ? { ...prev, status: 'running' } : null);
-
     } catch (err: any) {
-      addLog('error', `❌ خطأ في النشر: ${err.message}`);
+      addLog('error', `❌ خطأ في الاتصال: ${err.message}`);
       await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'error' } : null);
     }
@@ -217,14 +215,30 @@ export default function ProjectEditor() {
     if (!project || !user) return;
     addLog('warning', '⏹️ جاري إيقاف البوت...');
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    addLog('info', '🔌 جاري قطع الاتصال بـ Discord...');
+    try {
+      if (project.railway_service_id) {
+        addLog('info', '📡 جاري إيقاف الخدمة على Railway...');
+        const proxyRes = await fetch(`${PROXY_URL}/stop`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceId: project.railway_service_id }),
+        });
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    addLog('success', '✅ تم إيقاف البوت بنجاح');
+        if (proxyRes.ok) {
+          addLog('success', '✅ تم إيقاف البوت على Railway');
+        } else {
+          addLog('warning', '⚠️ حدث خطأ أثناء الإيقاف');
+        }
+      }
 
-    await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
-    setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
+      await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'stopped', railway_service_id: null } : null);
+      addLog('success', '✅ تم إيقاف البوت بنجاح');
+    } catch (err: any) {
+      await supabase.from('projects').update({ status: 'stopped' }).eq('id', project.id);
+      setProject(prev => prev ? { ...prev, status: 'stopped' } : null);
+      addLog('warning', '⚠️ تم الإيقاف محلياً');
+    }
   };
 
   const handleSaveToken = () => {
@@ -236,7 +250,6 @@ export default function ProjectEditor() {
       toast.error('توكن Discord غير صالح');
       return;
     }
-    // Save to localStorage only (never sent to server)
     localStorage.setItem(`bot_token_${id}`, botToken.trim());
     setShowTokenDialog(false);
     toast.success('تم حفظ التوكن بأمان');
@@ -326,14 +339,13 @@ export default function ProjectEditor() {
           )}
           <Badge variant="secondary">{project.language}</Badge>
           <div className={`w-2 h-2 rounded-full ${
-            project.status === 'running' ? 'bg-success animate-pulse' : 
-            project.status === 'deploying' ? 'bg-warning animate-pulse' : 
+            project.status === 'running' ? 'bg-success animate-pulse' :
+            project.status === 'deploying' ? 'bg-warning animate-pulse' :
             project.status === 'error' ? 'bg-destructive' : 'bg-muted-foreground'
           }`} />
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Bot Token Button */}
           <Button size="sm" variant="ghost" onClick={() => setShowTokenDialog(true)} className={botToken ? 'text-success' : 'text-destructive'}>
             <Key className="w-4 h-4 ml-1" />
             {botToken ? 'توكن محفوظ ✓' : 'أدخل التوكن'}
@@ -416,7 +428,6 @@ export default function ProjectEditor() {
 
         {/* Editor + Console */}
         <div className="flex-1 flex flex-col">
-          {/* Editor */}
           <div className="flex-1 relative">
             {selectedFile ? (
               <>
@@ -440,7 +451,6 @@ export default function ProjectEditor() {
             )}
           </div>
 
-          {/* Console */}
           {showConsole && (
             <div className="h-48 border-t border-border/30 bg-background">
               <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
