@@ -306,13 +306,22 @@ export default function Admin() {
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات'); }
   };
 
+  const [missingAccessUrl, setMissingAccessUrl] = useState('');
+
   const registerCommands = async () => {
     setBotLoading(true);
+    setMissingAccessUrl('');
     try {
       const res = await fetch(`${PROXY}/bot/commands/register`, { method: 'POST' });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      toast.success(data.message || 'تم تسجيل الأوامر!');
+      if (data.error === 'Missing Access') {
+        setMissingAccessUrl(data.invite_url || '');
+        toast.error(data.detail || 'Missing Access — البوت يحتاج صلاحية applications.commands', { duration: 8000 });
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        toast.success(data.message || 'تم تسجيل الأوامر!');
+      }
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تسجيل الأوامر'); }
     setBotLoading(false);
   };
@@ -976,12 +985,19 @@ export default function Admin() {
                   <div className="space-y-2">
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
                       setBotLoading(true);
+                      setMissingAccessUrl('');
                       try {
                         const res = await fetch(`${PROXY}/bot/setup`, { method: 'POST' });
                         const data = await res.json();
-                        if (data.error) throw new Error(data.error);
-                        toast.success(data.message || 'تم إعداد البوت!');
-                        loadBotInfo();
+                        if (data.error === 'Missing Access') {
+                          setMissingAccessUrl(data.invite_url || '');
+                          toast.error(data.detail || 'Missing Access — البوت يحتاج صلاحية applications.commands', { duration: 8000 });
+                        } else if (data.error) {
+                          throw new Error(data.error);
+                        } else {
+                          toast.success(data.message || 'تم إعداد البوت!');
+                          loadBotInfo();
+                        }
                       } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإعداد'); }
                       setBotLoading(false);
                     }} disabled={botLoading}>
@@ -992,6 +1008,23 @@ export default function Admin() {
                       <MessageSquare className="w-4 h-4 ml-2" />
                       تسجيل الأوامر فقط
                     </Button>
+                    {missingAccessUrl && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
+                        <div className="flex items-center gap-2 text-red-400">
+                          <Ban className="w-5 h-5 flex-shrink-0" />
+                          <p className="text-sm font-bold">البوت يحتاج إعادة دعوة مع صلاحية ordeers</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">البوت حالياً لا يملك صلاحية <code className="text-red-400">applications.commands</code> في السيرفر. اضغط الزر أدناه لإعادة دعوة البوت مع الصلاحية المطلوبة:</p>
+                        <a href={missingAccessUrl} target="_blank" rel="noopener noreferrer">
+                          <Button className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30">
+                            <Zap className="w-4 h-4 ml-2" />
+                            إعادة دعوة البوت (مع applications.commands)
+                          </Button>
+                        </a>
+                        <p className="text-[10px] text-muted-foreground text-center">بعد الدعوة، اضغط "تسجيل الأوامر" مرة أخرى</p>
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
               </div>
