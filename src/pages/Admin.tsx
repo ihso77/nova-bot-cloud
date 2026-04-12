@@ -967,9 +967,11 @@ export default function Admin() {
                     <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/site-check</code> - فحص خدمات الموقع (حقيقي)</div>
                     <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/top-servers</code> - أفضل المشاريع النشطة</div>
                     <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/plans-detail</code> - تفاصيل الباقات والمقارنة</div>
+                    <p className="text-xs font-semibold text-orange-500/70 mt-3 mb-1">تذاكر وأدمن</p>
                     <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/lookup</code> - بحث مستخدم (أدمن)</div>
                     <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/recent-payments</code> - آخر المدفوعات (أدمن)</div>
                     <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/set-status-channel</code> - تعيين روم الحالة (أدمن)</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/send-ticket-panel</code> - ارسال بانل التذاكر</div>
                   </div>
                   <div className="space-y-2">
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
