@@ -283,6 +283,9 @@ export default function Admin() {
   // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
   const PROXY = 'https://proxy-production-a7b5.up.railway.app';
 
+  const [missingAccessUrl, setMissingAccessUrl] = useState('');
+  const [botInviteUrl, setBotInviteUrl] = useState('');
+
   const loadBotInfo = async () => {
     setBotLoading(true);
     try {
@@ -294,6 +297,12 @@ export default function Admin() {
         setSelectedGuild(data.guilds[0].id);
         loadChannels(data.guilds[0].id);
       }
+      // Also load invite URL
+      try {
+        const inviteRes = await fetch(`${PROXY}/bot/invite`);
+        const inviteData = await inviteRes.json();
+        if (inviteData.invite_url) setBotInviteUrl(inviteData.invite_url);
+      } catch {}
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل معلومات البوت'); }
     setBotLoading(false);
   };
@@ -305,8 +314,6 @@ export default function Admin() {
       setGuildChannels(data?.channels || []);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات'); }
   };
-
-  const [missingAccessUrl, setMissingAccessUrl] = useState('');
 
   const registerCommands = async () => {
     setBotLoading(true);
@@ -1013,10 +1020,10 @@ export default function Admin() {
                         className="mt-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
                         <div className="flex items-center gap-2 text-red-400">
                           <Ban className="w-5 h-5 flex-shrink-0" />
-                          <p className="text-sm font-bold">البوت يحتاج إعادة دعوة مع صلاحية ordeers</p>
+                          <p className="text-sm font-bold">البوت يحتاج إعادة دعوة مع صلاحية commands</p>
                         </div>
                         <p className="text-xs text-muted-foreground">البوت حالياً لا يملك صلاحية <code className="text-red-400">applications.commands</code> في السيرفر. اضغط الزر أدناه لإعادة دعوة البوت مع الصلاحية المطلوبة:</p>
-                        <a href={missingAccessUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={missingAccessUrl || botInviteUrl} target="_blank" rel="noopener noreferrer">
                           <Button className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30">
                             <Zap className="w-4 h-4 ml-2" />
                             إعادة دعوة البوت (مع applications.commands)
@@ -1056,6 +1063,19 @@ export default function Admin() {
                           setBotLoading(false);
                         }}>
                         <CreditCard className="w-4 h-4 ml-1" /> إرسال الأسعار
+                      </Button>
+                      <Button variant="outline" className="flex-1" disabled={!selectedChannel || botLoading}
+                        onClick={async () => {
+                          setBotLoading(true);
+                          try {
+                            const res = await fetch(`${PROXY}/bot/send-ticket-panel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel }) });
+                            const data = await res.json();
+                            if (data.error) throw new Error(data.error);
+                            toast.success('تم ارسال بانل التذاكر!');
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
+                          setBotLoading(false);
+                        }}>
+                        <Ticket className="w-4 h-4 ml-1" /> ارسال بانل التيكيت
                       </Button>
                     </div>
                     <div className="flex gap-2">
