@@ -14,7 +14,7 @@ import {
   ChevronLeft, Search, Crown, Activity, Clock, Mail, User as UserIcon,
   Monitor, Trash2, Eye, Ban, Wrench, Zap, ArrowLeft, Star, Package,
   ToggleLeft, ToggleRight, Send, X, Check, Sparkles, Heart,
-  TrendingUp, Layers, Database, ShieldCheck, FileCode2,
+  TrendingUp, Layers, Database, ShieldCheck, FileCode2, Ticket, Plus, Percent,
 } from 'lucide-react';
 
 // --- Admin Navigation ---
@@ -22,6 +22,7 @@ const navItems = [
   { id: 'overview', icon: BarChart3, label: 'نظرة عامة' },
   { id: 'users', icon: Users, label: 'المستخدمين' },
   { id: 'projects', icon: Server, label: 'المشاريع' },
+  { id: 'coupons', icon: Ticket, label: 'أكواد الخصم' },
   { id: 'gifts', icon: Gift, label: 'إهداء الباقات' },
   { id: 'settings', icon: Settings, label: 'إعدادات الموقع' },
   { id: 'plans-manage', icon: Crown, label: 'إدارة الباقات' },
