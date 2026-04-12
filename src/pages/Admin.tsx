@@ -783,6 +783,107 @@ export default function Admin() {
             </motion.div>
           )}
 
+          {/* Discord Bot */}
+          {activeTab === 'discord-bot' && (
+            <motion.div key="discord-bot" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <h2 className="text-2xl font-bold mb-6 gradient-text">بوت ديسكورد</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Bot Info */}
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Bot className="w-5 h-5 text-primary" />
+                    <h3 className="font-bold">معلومات البوت</h3>
+                  </div>
+                  {botInfo ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">الاسم</span><span className="font-bold">{botInfo.bot?.username}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">السيرفرات</span><Badge variant="secondary">{botInfo.guilds_count}</Badge></div>
+                      {botInfo.guilds?.map((g: any) => (
+                        <button key={g.id} onClick={() => { setSelectedGuild(g.id); loadChannels(g.id); }}
+                          className={`w-full text-right p-2 rounded-lg transition-colors text-sm ${selectedGuild === g.id ? 'bg-primary/15 text-primary' : 'hover:bg-secondary/50'}`}>
+                          {g.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={loadBotInfo} disabled={botLoading}>
+                      {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Monitor className="w-4 h-4 ml-2" />}
+                      تحميل معلومات البوت
+                    </Button>
+                  )}
+                </motion.div>
+
+                {/* Commands */}
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="glass rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    <h3 className="font-bold">الأوامر</h3>
+                  </div>
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/prices</code> - إرسال الأسعار</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/serverinfo</code> - معلومات السيرفر</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/stats</code> - إحصائيات Nova</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - إرسال إعلان</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - حالة الخدمة</div>
+                  </div>
+                  <Button className="w-full gradient-bg text-primary-foreground" onClick={registerCommands} disabled={botLoading}>
+                    {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Zap className="w-4 h-4 ml-2" />}
+                    تسجيل الأوامر في ديسكورد
+                  </Button>
+                </motion.div>
+              </div>
+
+              {/* Quick Actions */}
+              {selectedGuild && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-5 mb-4">
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> إجراءات سريعة</h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
+                        className="flex-1 h-9 rounded-md border border-border bg-secondary px-3 text-sm">
+                        <option value="">اختر روم...</option>
+                        {guildChannels.map(ch => (
+                          <option key={ch.id} value={ch.id}>#{ch.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" disabled={!selectedChannel || botLoading}
+                        onClick={async () => {
+                          setBotLoading(true);
+                          try {
+                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_prices', channel_id: selectedChannel } });
+                            if (res.error) throw res.error;
+                            toast.success('تم إرسال الأسعار!');
+                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          setBotLoading(false);
+                        }}>
+                        <CreditCard className="w-4 h-4 ml-1" /> إرسال الأسعار
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input placeholder="نص الإعلان..." value={announceMsg} onChange={e => setAnnounceMsg(e.target.value)} />
+                      <Button className="gradient-bg text-primary-foreground" disabled={!selectedChannel || !announceMsg.trim() || botLoading}
+                        onClick={async () => {
+                          setBotLoading(true);
+                          try {
+                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_announcement', channel_id: selectedChannel, message: announceMsg } });
+                            if (res.error) throw res.error;
+                            toast.success('تم إرسال الإعلان!');
+                            setAnnounceMsg('');
+                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          setBotLoading(false);
+                        }}>
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
           {/* Coupons */}
           {activeTab === 'coupons' && (
             <motion.div key="coupons" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
