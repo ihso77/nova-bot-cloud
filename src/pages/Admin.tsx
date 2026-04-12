@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { saveGiftLocal } from '@/components/GiftPopup';
@@ -15,6 +16,7 @@ import {
   Monitor, Trash2, Eye, Ban, Wrench, Zap, ArrowLeft, Star, Package,
   ToggleLeft, ToggleRight, Send, X, Check, Sparkles, Heart,
   TrendingUp, Layers, Database, ShieldCheck, FileCode2, Ticket, Plus, Percent,
+  Bot, MessageSquare, Hash,
 } from 'lucide-react';
 
 // --- Admin Navigation ---
@@ -22,6 +24,7 @@ const navItems = [
   { id: 'overview', icon: BarChart3, label: 'نظرة عامة' },
   { id: 'users', icon: Users, label: 'المستخدمين' },
   { id: 'projects', icon: Server, label: 'المشاريع' },
+  { id: 'discord-bot', icon: Bot, label: 'بوت ديسكورد' },
   { id: 'coupons', icon: Ticket, label: 'أكواد الخصم' },
   { id: 'gifts', icon: Gift, label: 'إهداء الباقات' },
   { id: 'settings', icon: Settings, label: 'إعدادات الموقع' },
@@ -100,6 +103,14 @@ export default function Admin() {
   const [couponType, setCouponType] = useState<'percentage' | 'fixed'>('percentage');
   const [couponValue, setCouponValue] = useState('');
   const [couponMaxUses, setCouponMaxUses] = useState('');
+
+  // Discord Bot
+  const [botInfo, setBotInfo] = useState<any>(null);
+  const [botLoading, setBotLoading] = useState(false);
+  const [selectedGuild, setSelectedGuild] = useState('');
+  const [guildChannels, setGuildChannels] = useState<any[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [announceMsg, setAnnounceMsg] = useState('');
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -225,11 +236,44 @@ export default function Admin() {
     loadCoupons();
   };
 
+  const loadBotInfo = async () => {
+    setBotLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'bot_info' } });
+      if (error) throw error;
+      setBotInfo(data);
+      if (data?.guilds?.length > 0) {
+        setSelectedGuild(data.guilds[0].id);
+        loadChannels(data.guilds[0].id);
+      }
+    } catch (e: any) { toast.error(e.message || 'فشل تحميل معلومات البوت'); }
+    setBotLoading(false);
+  };
+
+  const loadChannels = async (guildId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'get_channels', guild_id: guildId } });
+      if (error) throw error;
+      setGuildChannels(data?.channels || []);
+    } catch (e: any) { toast.error(e.message || 'فشل تحميل الرومات'); }
+  };
+
+  const registerCommands = async () => {
+    setBotLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'register_commands' } });
+      if (error) throw error;
+      toast.success(data?.message || 'تم تسجيل الأوامر!');
+    } catch (e: any) { toast.error(e.message || 'فشل تسجيل الأوامر'); }
+    setBotLoading(false);
+  };
+
   useEffect(() => {
     if (activeTab === 'users' && users.length === 0) loadUsers();
     if (activeTab === 'projects' && projects.length === 0) loadProjects();
     if (activeTab === 'gifts' && gifts.length === 0) loadGifts();
     if (activeTab === 'coupons' && coupons.length === 0) loadCoupons();
+    if (activeTab === 'discord-bot' && !botInfo) loadBotInfo();
     if (activeTab === 'overview') loadOverview();
   }, [activeTab]);
 
@@ -770,6 +814,107 @@ export default function Admin() {
                   </motion.div>
                 ))}
               </div>
+            </motion.div>
+          )}
+
+          {/* Discord Bot */}
+          {activeTab === 'discord-bot' && (
+            <motion.div key="discord-bot" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <h2 className="text-2xl font-bold mb-6 gradient-text">بوت ديسكورد</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Bot Info */}
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Bot className="w-5 h-5 text-primary" />
+                    <h3 className="font-bold">معلومات البوت</h3>
+                  </div>
+                  {botInfo ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">الاسم</span><span className="font-bold">{botInfo.bot?.username}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">السيرفرات</span><Badge variant="secondary">{botInfo.guilds_count}</Badge></div>
+                      {botInfo.guilds?.map((g: any) => (
+                        <button key={g.id} onClick={() => { setSelectedGuild(g.id); loadChannels(g.id); }}
+                          className={`w-full text-right p-2 rounded-lg transition-colors text-sm ${selectedGuild === g.id ? 'bg-primary/15 text-primary' : 'hover:bg-secondary/50'}`}>
+                          {g.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full" onClick={loadBotInfo} disabled={botLoading}>
+                      {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Monitor className="w-4 h-4 ml-2" />}
+                      تحميل معلومات البوت
+                    </Button>
+                  )}
+                </motion.div>
+
+                {/* Commands */}
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="glass rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    <h3 className="font-bold">الأوامر</h3>
+                  </div>
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/prices</code> - إرسال الأسعار</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/serverinfo</code> - معلومات السيرفر</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/stats</code> - إحصائيات Nova</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - إرسال إعلان</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - حالة الخدمة</div>
+                  </div>
+                  <Button className="w-full gradient-bg text-primary-foreground" onClick={registerCommands} disabled={botLoading}>
+                    {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Zap className="w-4 h-4 ml-2" />}
+                    تسجيل الأوامر في ديسكورد
+                  </Button>
+                </motion.div>
+              </div>
+
+              {/* Quick Actions */}
+              {selectedGuild && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-5 mb-4">
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> إجراءات سريعة</h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
+                        className="flex-1 h-9 rounded-md border border-border bg-secondary px-3 text-sm">
+                        <option value="">اختر روم...</option>
+                        {guildChannels.map(ch => (
+                          <option key={ch.id} value={ch.id}>#{ch.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" disabled={!selectedChannel || botLoading}
+                        onClick={async () => {
+                          setBotLoading(true);
+                          try {
+                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_prices', channel_id: selectedChannel } });
+                            if (res.error) throw res.error;
+                            toast.success('تم إرسال الأسعار!');
+                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          setBotLoading(false);
+                        }}>
+                        <CreditCard className="w-4 h-4 ml-1" /> إرسال الأسعار
+                      </Button>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input placeholder="نص الإعلان..." value={announceMsg} onChange={e => setAnnounceMsg(e.target.value)} />
+                      <Button className="gradient-bg text-primary-foreground" disabled={!selectedChannel || !announceMsg.trim() || botLoading}
+                        onClick={async () => {
+                          setBotLoading(true);
+                          try {
+                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_announcement', channel_id: selectedChannel, message: announceMsg } });
+                            if (res.error) throw res.error;
+                            toast.success('تم إرسال الإعلان!');
+                            setAnnounceMsg('');
+                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          setBotLoading(false);
+                        }}>
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
