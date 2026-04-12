@@ -76,58 +76,58 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
 -- باستخدام UPDATE لأن الجداول موجودة مسبقاً
 -- ============================================================
 
--- باقة مجانية محسّنة
+-- باقة مجانية
 UPDATE plans SET
   name = 'مجاني',
   description = 'تجربة مجانية لاستضافة بوت واحد',
   price = 0,
-  storage_mb = 1024,
-  ram_mb = 512,
+  storage_mb = 512,
+  ram_mb = 256,
   cpu_cores = 1,
   is_free = true,
   is_active = true,
-  features = ARRAY['استضافة بوت واحد', '1024MB تخزين', '512MB رام', '1 نواة معالج', 'دعم 24 ساعة', 'لوحة تحكم كاملة', '30 يوم تجربة']::text[],
+  features = '["بوت واحد", "512MB تخزين", "256MB رام", "نشر فوري", "لوحة تحكم"]'::jsonb,
   sort_order = 1
 WHERE sort_order = 1;
 
--- باقة أساسية رخيصة
+-- باقة أساسية
 UPDATE plans SET
   name = 'أساسي',
-  description = 'مثالي للمبتدئين مع مميزات أساسية',
+  description = 'للبوتات الصغيرة - اقتصادي وعملي',
   price = 0.49,
-  storage_mb = 2048,
-  ram_mb = 1024,
+  storage_mb = 1024,
+  ram_mb = 512,
   cpu_cores = 1,
   is_free = false,
   is_active = true,
-  features = ARRAY['استضافة 2 بوتات', '2GB تخزين', '1GB رام', '1 نواة معالج', 'دعم 24 ساعة', 'لوحة تحكم كاملة', 'سجل نشاط', 'إعادة تشغيل تلقائية']::text[],
+  features = '["3 مشاريع", "1GB تخزين", "512MB رام", "دعم فني أولي", "سجل الأنشطة", "إعادة تشغيل تلقائية"]'::jsonb,
   sort_order = 2
 WHERE sort_order = 2;
 
--- باقة احترافية - الأكثر طلباً
+-- باقة احترافية
 UPDATE plans SET
   name = 'احترافي',
-  description = 'للمحترفين بأداء عالي ومميزات متقدمة',
+  description = 'الأكثر طلباً - أفضل قيمة مقابل السعر',
   price = 0.99,
-  storage_mb = 5120,
-  ram_mb = 2048,
+  storage_mb = 3072,
+  ram_mb = 1024,
   cpu_cores = 2,
   is_free = false,
   is_active = true,
-  features = ARRAY['استضافة 5 بوتات', '5GB تخزين', '2GB رام', '2 نواة معالج', 'دعم أولوية', 'لوحة تحكم متقدمة', 'سجل نشاط مفصّل', 'إعادة تشغيل تلقائية', 'نسخ احتياطي يومي', 'نطاق مخصص', 'SSL مجاني']::text[],
+  features = '["10 مشاريع", "3GB تخزين", "1GB رام", "دعم فني ذهبي", "نسخ احتياطي يومي", "نطاق فرعي مجاني", "إحصائيات متقدمة"]'::jsonb,
   sort_order = 3
 WHERE sort_order = 3;
 
 -- باقة مؤسسية
 UPDATE plans SET
   name = 'مؤسسي',
-  description = 'للشركات والمشاريع الكبيرة بأقصى أداء',
+  description = 'للخدمات الكبيرة والاحترافية',
   price = 1.99,
-  storage_mb = 10240,
-  ram_mb = 4096,
+  storage_mb = 5120,
+  ram_mb = 2048,
   cpu_cores = 4,
   is_free = false,
   is_active = true,
-  features = ARRAY['استضافة غير محدودة', '10GB تخزين', '4GB رام', '4 نواة معالج', 'دعم VIP على مدار الساعة', 'لوحة تحكم مؤسسية', 'سجل نشاط شامل', 'إعادة تشغيل تلقائية', 'نسخ احتياطي كل 6 ساعات', 'نطاق مخصص', 'SSL مجاني', 'CDN', 'تحليلات متقدمة', 'API كامل']::text[],
+  features = '["مشاريع غير محدودة", "5GB تخزين", "2GB رام", "دعم VIP 24/7", "نسخ احتياطي كل ساعة", "نطاق فرعي + SSL", "API متقدم", "أولوية نشر"]'::jsonb,
   sort_order = 4
 WHERE sort_order = 4;
