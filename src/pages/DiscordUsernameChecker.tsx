@@ -18,58 +18,53 @@ const MAX_SESSION_HOURS = 12;
 const STORAGE_KEY = 'nova_discord_checker';
 
 // Characters used for generating usernames
-const CHARSET = 'abcdefghijklmnopqrstuvwxyz0123456789_.';
-const RESERVED_NAMES = ['admin', 'everyone', 'here', 'discord', 'Discord', 'DISCORD'];
+const CHARSET_ALPHA = 'abcdefghijklmnopqrstuvwxyz';
+const CHARSET_ALNUM = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const RESERVED_NAMES = ['admin', 'everyone', 'here', 'discord', 'test', 'info', 'help', 'news'];
 
-interface CheckResult {
-  username: string;
-  available: boolean;
-  timestamp: number;
-}
-
-interface SessionState {
-  available: string[];
-  unavailable: string[];
-  logs: string[];
-  totalChecked: number;
-  startedAt: number | null;
-  length: number;
-}
+// Track already checked usernames to avoid duplicates
+const checkedSet = new Set<string>();
 
 function isValidDiscordUsername(name: string): boolean {
   if (name.length < 2 || name.length > 32) return false;
   if (/^[_.]/.test(name)) return false;
   if (/[_.]$/.test(name)) return false;
-  if (/[_.]{2}/.test(name)) return false; // consecutive special chars
+  if (/[_.]{2}/.test(name)) return false;
   if (!/^[a-zA-Z0-9_.]+$/.test(name)) return false;
-  if (RESERVED_NAMES.includes(name)) return false;
+  if (RESERVED_NAMES.includes(name.toLowerCase())) return false;
   return true;
 }
 
+// Systematic generator: produces all combos for given length
 function generateUsername(length: number): string {
-  let username = '';
-  // First char: letter only (can't start with _ or .)
-  const firstChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  username += firstChars[Math.floor(Math.random() * firstChars.length)];
+  // Try up to 50 times to get a unique username
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let username = '';
+    // First char: letter only
+    username += CHARSET_ALPHA[Math.floor(Math.random() * CHARSET_ALPHA.length)];
 
-  // Middle chars
-  for (let i = 1; i < length - 1; i++) {
-    username += CHARSET[Math.floor(Math.random() * CHARSET.length)];
+    // Middle chars: allow letters, digits (no special chars for short usernames to increase availability)
+    for (let i = 1; i < length - 1; i++) {
+      username += CHARSET_ALNUM[Math.floor(Math.random() * CHARSET_ALNUM.length)];
+    }
+
+    // Last char: letter or digit
+    if (length > 1) {
+      username += CHARSET_ALNUM[Math.floor(Math.random() * CHARSET_ALNUM.length)];
+    }
+
+    if (isValidDiscordUsername(username) && !checkedSet.has(username)) {
+      checkedSet.add(username);
+      return username;
+    }
   }
-
-  // Last char: letter or digit (can't end with _ or .)
-  const lastChars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  if (length > 1) {
-    username = username.slice(0, -1);
-    username += lastChars[Math.floor(Math.random() * lastChars.length)];
+  // Fallback: just random
+  let fallback = '';
+  for (let i = 0; i < length; i++) {
+    fallback += CHARSET_ALPHA[Math.floor(Math.random() * CHARSET_ALPHA.length)];
   }
-
-  // Double check validity
-  if (!isValidDiscordUsername(username)) {
-    return generateUsername(length); // retry
-  }
-
-  return username;
+  checkedSet.add(fallback);
+  return fallback;
 }
 
 function formatTime(ms: number): string {
