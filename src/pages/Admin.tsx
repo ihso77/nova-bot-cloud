@@ -103,6 +103,14 @@ export default function Admin() {
   const [couponValue, setCouponValue] = useState('');
   const [couponMaxUses, setCouponMaxUses] = useState('');
 
+  // Discord Bot
+  const [botInfo, setBotInfo] = useState<any>(null);
+  const [botLoading, setBotLoading] = useState(false);
+  const [selectedGuild, setSelectedGuild] = useState('');
+  const [guildChannels, setGuildChannels] = useState<any[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const [announceMsg, setAnnounceMsg] = useState('');
+
   useEffect(() => {
     if (!isAdmin) return;
     loadOverview();
