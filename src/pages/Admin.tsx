@@ -282,6 +282,8 @@ export default function Admin() {
 
   // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
   const PROXY = import.meta.env.VITE_PROXY_URL || 'https://proxy-production-a7b5.up.railway.app';
+  const botHeaders = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
+  const botHeadersPost = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
 
   const [missingAccessUrl, setMissingAccessUrl] = useState('');
   const [botInviteUrl, setBotInviteUrl] = useState('');
@@ -289,7 +291,7 @@ export default function Admin() {
   const loadBotInfo = async () => {
     setBotLoading(true);
     try {
-      const res = await fetch(`${PROXY}/bot/info`);
+      const res = await fetch(`${PROXY}/bot/info`, botHeaders);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setBotInfo(data);
@@ -299,7 +301,7 @@ export default function Admin() {
       }
       // Also load invite URL
       try {
-        const inviteRes = await fetch(`${PROXY}/bot/invite`);
+        const inviteRes = await fetch(`${PROXY}/bot/invite`, botHeaders);
         const inviteData = await inviteRes.json();
         if (inviteData.invite_url) setBotInviteUrl(inviteData.invite_url);
       } catch {}
@@ -309,7 +311,7 @@ export default function Admin() {
 
   const loadChannels = async (guildId: string) => {
     try {
-      const res = await fetch(`${PROXY}/bot/guilds/${guildId}/channels`);
+      const res = await fetch(`${PROXY}/bot/guilds/${guildId}/channels`, botHeaders);
       const data = await res.json();
       setGuildChannels(data?.channels || []);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات'); }
@@ -319,7 +321,7 @@ export default function Admin() {
     setBotLoading(true);
     setMissingAccessUrl('');
     try {
-      const res = await fetch(`${PROXY}/bot/commands/register`, { method: 'POST' });
+      const res = await fetch(`${PROXY}/bot/commands/register`, { ...botHeadersPost, method: 'POST' });
       const data = await res.json();
       if (data.error === 'Missing Access') {
         setMissingAccessUrl(data.invite_url || '');
@@ -1022,7 +1024,7 @@ export default function Admin() {
                       setBotLoading(true);
                       setMissingAccessUrl('');
                       try {
-                        const res = await fetch(`${PROXY}/bot/setup`, { method: 'POST' });
+                        const res = await fetch(`${PROXY}/bot/setup`, { ...botHeadersPost, method: 'POST' });
                         const data = await res.json();
                         if (data.error === 'Missing Access') {
                           setMissingAccessUrl(data.invite_url || '');
@@ -1083,7 +1085,7 @@ export default function Admin() {
                         onClick={async () => {
                           setBotLoading(true);
                           try {
-                            const res = await fetch(`${PROXY}/bot/send-prices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel }) });
+                            const res = await fetch(`${PROXY}/bot/send-prices`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
                             toast.success('تم إرسال الأسعار!');
@@ -1096,7 +1098,7 @@ export default function Admin() {
                         onClick={async () => {
                           setBotLoading(true);
                           try {
-                            const res = await fetch(`${PROXY}/bot/send-ticket-panel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel }) });
+                            const res = await fetch(`${PROXY}/bot/send-ticket-panel`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
                             toast.success('تم ارسال بانل التذاكر!');
@@ -1112,7 +1114,7 @@ export default function Admin() {
                         onClick={async () => {
                           setBotLoading(true);
                           try {
-                            const res = await fetch(`${PROXY}/bot/announce`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message: announceMsg }) });
+                            const res = await fetch(`${PROXY}/bot/announce`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel, message: announceMsg }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
                             toast.success('تم إرسال الإعلان!');
