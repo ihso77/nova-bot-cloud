@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
@@ -173,6 +174,7 @@ export default function ProjectEditor() {
   const [consoleLogs, setConsoleLogs] = useState<ConsoleLog[]>([]);
   const [newFileName, setNewFileName] = useState('');
   const [showNewFile, setShowNewFile] = useState(false);
+  const [showMobileFiles, setShowMobileFiles] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [projectName, setProjectName] = useState('');
   const [isDeploying, setIsDeploying] = useState(false);
@@ -916,8 +918,11 @@ export default function ProjectEditor() {
               <div className="flex items-center justify-center h-full text-muted-foreground flex-col gap-3">
                 <FileCode2 className="w-12 h-12 opacity-30" />
                 <span>اختر ملف للتعديل</span>
-                <Button size="sm" variant="outline" onClick={() => setShowNewFile(true)} className="gap-1">
+                <Button size="sm" variant="outline" onClick={() => { setShowNewFile(true); setShowMobileFiles(true); }} className="gap-1">
                   <Plus className="w-4 h-4" /> إنشاء ملف جديد
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowMobileFiles(true)} className="gap-1">
+                  <FileCode2 className="w-4 h-4" /> عرض الملفات
                 </Button>
               </div>
             )}
@@ -1011,6 +1016,105 @@ export default function ProjectEditor() {
           )}
         </div>
       </div>
+
+      {/* Mobile Files Sheet - visible on mobile only */}
+      <Sheet open={showMobileFiles} onOpenChange={setShowMobileFiles}>
+        <SheetContent side="right" className="w-80 p-0" dir="rtl">
+          <SheetHeader className="px-4 pt-4 pb-2 border-b border-border/30">
+            <SheetTitle className="text-right flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-primary" />
+                <span>الملفات</span>
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowNewFile(true)} title="ملف جديد">
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => fileInputRef.current?.click()} title="استيراد ملف">
+                  <Upload className="w-4 h-4" />
+                </Button>
+              </div>
+            </SheetTitle>
+          </SheetHeader>
+
+          {showNewFile && (
+            <div className="p-3 border-b border-border/30 flex gap-2">
+              <Input
+                value={newFileName}
+                onChange={e => setNewFileName(e.target.value)}
+                placeholder="اسم الملف.js"
+                className="h-10 text-sm bg-secondary"
+                onKeyDown={e => e.key === 'Enter' && createFile()}
+                autoFocus
+              />
+              <Button size="sm" className="h-10 px-3" onClick={createFile}>إنشاء</Button>
+              <Button size="sm" variant="ghost" className="h-10 px-2" onClick={() => { setShowNewFile(false); setNewFileName(''); }}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+            {files.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <FileCode2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                لا توجد ملفات
+              </div>
+            ) : (
+              files.map(file => (
+                <div
+                  key={file.id}
+                  className={`flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                    selectedFile?.id === file.id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-secondary/50'
+                  }`}
+                  onClick={() => {
+                    setSelectedFile(file);
+                    setEditorContent(file.content || '');
+                    setShowMobileFiles(false);
+                  }}
+                >
+                  <div className="flex items-center gap-2.5 truncate min-w-0">
+                    <FileText className={`w-4 h-4 flex-shrink-0 ${getFileIcon(file.file_name)}`} />
+                    <span className="text-sm truncate">{file.file_name}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 flex-shrink-0 text-destructive hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); deleteFile(file.id); }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="border-t border-border/30 p-3 space-y-2">
+            {(() => {
+              const currentStorage = calculateStorageBytes(files, editorContent, selectedFile?.id);
+              const limitBytes = planLimits.storage_mb * 1024 * 1024;
+              const pct = Math.min(100, (currentStorage / limitBytes) * 100);
+              const isNearLimit = pct > 85;
+              const isOverLimit = currentStorage > limitBytes;
+              return (
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className={isOverLimit ? 'text-red-400 font-medium' : isNearLimit ? 'text-yellow-400' : ''}>
+                    {formatBytes(currentStorage)} / {formatBytes(limitBytes)}
+                  </span>
+                  <span className={isOverLimit ? 'text-red-400' : ''}>{Math.round(pct)}%</span>
+                </div>
+              );
+            })()}
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{files.length} ملف</span>
+              {hasUnsaved && <span className="text-yellow-400">● غير محفوظ</span>}
+            </div>
+          </div>
+
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => { handleFileImport(e); setShowMobileFiles(false); }} />
+        </SheetContent>
+      </Sheet>
 
       {/* Token Dialog */}
       {showTokenDialog && (

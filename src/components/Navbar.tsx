@@ -39,12 +39,8 @@ export default function Navbar() {
         </>
       ) : (
         <div className="flex flex-col gap-2 border-t border-border/30 pt-3 mt-2">
-          <Link to="/login" onClick={() => setOpen(false)}>
-            <Button variant="ghost" size="sm" className="w-full">دخول</Button>
-          </Link>
-          <Link to="/register" onClick={() => setOpen(false)}>
-            <Button size="sm" className="w-full gradient-bg text-primary-foreground">تسجيل</Button>
-          </Link>
+          <Button variant="ghost" size="sm" className="w-full" onClick={() => { navigate('/login'); setOpen(false); }}>دخول</Button>
+          <Button size="sm" className="w-full gradient-bg text-primary-foreground" onClick={() => { navigate('/register'); setOpen(false); }}>تسجيل</Button>
         </div>
       )}
     </div>
@@ -86,12 +82,8 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link to="/login">
-                <Button variant="ghost" size="sm">دخول</Button>
-              </Link>
-              <Link to="/register">
-                <Button size="sm" className="gradient-bg text-primary-foreground">تسجيل</Button>
-              </Link>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>دخول</Button>
+              <Button size="sm" className="gradient-bg text-primary-foreground" onClick={() => navigate('/register')}>تسجيل</Button>
             </>
           )}
         </div>

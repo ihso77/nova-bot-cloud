@@ -147,6 +147,19 @@
   }
 }
 
+/* Fix mobile touch targets - prevent double-tap zoom on buttons */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure minimum touch target size of 44px */
+@media (max-width: 640px) {
+  button, a.btn, .btn, [role="button"] {
+    min-height: 44px;
+  }
+}
+
 /* Safe area for notched phones */
 @supports (padding-top: env(safe-area-inset-top)) {
   body {

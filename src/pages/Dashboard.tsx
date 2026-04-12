@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -93,11 +93,9 @@ export default function Dashboard() {
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold gradient-text">مشاريعي</h1>
           {subscriptions.length > 0 && (
-              <Link to="/dashboard/new-project" className="w-full sm:w-auto">
-                <Button className="gradient-bg text-primary-foreground w-full sm:w-auto justify-center">
-                  <Plus className="w-4 h-4 ml-2" /> مشروع جديد
-                </Button>
-              </Link>
+              <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground w-full sm:w-auto justify-center">
+                <Plus className="w-4 h-4 ml-2" /> مشروع جديد
+              </Button>
           )}
         </motion.div>
 
@@ -153,9 +151,7 @@ export default function Dashboard() {
         {subscriptions.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 sm:p-12 text-center mb-6 sm:mb-8">
             <p className="text-muted-foreground mb-4">ليس لديك اشتراك فعال</p>
-            <Link to="/plans">
-              <Button className="gradient-bg text-primary-foreground">تصفح الباقات</Button>
-            </Link>
+            <Button onClick={() => navigate('/plans')} className="gradient-bg text-primary-foreground">تصفح الباقات</Button>
           </motion.div>
         )}
 
@@ -164,11 +160,9 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center">
             <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">لا توجد مشاريع بعد</p>
-            <Link to="/dashboard/new-project">
-              <Button className="gradient-bg text-primary-foreground">
-                <Plus className="w-4 h-4 ml-2" /> أنشئ أول مشروع
-              </Button>
-            </Link>
+            <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground">
+              <Plus className="w-4 h-4 ml-2" /> أنشئ أول مشروع
+            </Button>
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Server, Zap, Shield, Clock, ArrowLeft, Globe, Lock, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ const stats = [
 ];
 
 export default function Index() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
       <ParticlesBackground />
@@ -60,16 +61,12 @@ export default function Index() {
           transition={{ delay: 0.6 }}
           className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
         >
-          <Link to="/plans">
-            <Button size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-8 sm:px-10 glow-primary">
-              تصفح الباقات
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button size="lg" variant="outline" className="text-base sm:text-lg px-8 sm:px-10 border-primary/30 hover:bg-primary/10">
-              ابدأ مجاناً
-            </Button>
-          </Link>
+          <Button onClick={() => navigate('/plans')} size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-8 sm:px-10 glow-primary">
+            تصفح الباقات
+          </Button>
+          <Button onClick={() => navigate('/register')} size="lg" variant="outline" className="text-base sm:text-lg px-8 sm:px-10 border-primary/30 hover:bg-primary/10">
+            ابدأ مجاناً
+          </Button>
         </motion.div>
 
         {/* Stats */}
