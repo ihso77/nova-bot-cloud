@@ -773,6 +773,79 @@ export default function Admin() {
             </motion.div>
           )}
 
+          {/* Coupons */}
+          {activeTab === 'coupons' && (
+            <motion.div key="coupons" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold gradient-text">أكواد الخصم</h2>
+                <Button className="gradient-bg text-primary-foreground" onClick={() => setShowCouponForm(true)}>
+                  <Plus className="w-4 h-4 ml-2" /> إضافة كود
+                </Button>
+              </div>
+
+              {showCouponForm && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="glass rounded-xl p-5 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> كود خصم جديد</h3>
+                    <Button size="sm" variant="ghost" onClick={() => setShowCouponForm(false)}><X className="w-4 h-4" /></Button>
+                  </div>
+                  <div className="space-y-3">
+                    <Input placeholder="كود الخصم (مثل: NOVA50)" value={couponCode} onChange={e => setCouponCode(e.target.value)} dir="ltr" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <select value={couponType} onChange={e => setCouponType(e.target.value as 'percentage' | 'fixed')}
+                        className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm">
+                        <option value="percentage">نسبة مئوية (%)</option>
+                        <option value="fixed">مبلغ ثابت ($)</option>
+                      </select>
+                      <Input type="number" placeholder={couponType === 'percentage' ? 'النسبة (مثل: 50)' : 'المبلغ (مثل: 2)'} value={couponValue} onChange={e => setCouponValue(e.target.value)} dir="ltr" />
+                    </div>
+                    <Input type="number" placeholder="الحد الأقصى للاستخدام (اتركه فارغ = غير محدود)" value={couponMaxUses} onChange={e => setCouponMaxUses(e.target.value)} dir="ltr" />
+                    <Button className="w-full gradient-bg text-primary-foreground" onClick={handleCreateCoupon}>
+                      <Check className="w-4 h-4 ml-2" /> إنشاء الكود
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {couponsLoading ? (
+                <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              ) : (
+                <div className="space-y-3">
+                  {coupons.map((c, i) => (
+                    <motion.div key={c.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                      className="glass rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <Ticket className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-mono font-bold text-lg">{c.code}</p>
+                          <p className="text-xs text-muted-foreground">
+                            خصم {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}
+                            {' · '} استخدم {c.current_uses} مرة {c.max_uses ? `من ${c.max_uses}` : '(غير محدود)'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={c.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                          {c.is_active ? 'مفعل' : 'معطل'}
+                        </Badge>
+                        <Switch checked={c.is_active} onCheckedChange={() => handleToggleCoupon(c.id, c.is_active)} />
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400" onClick={() => handleDeleteCoupon(c.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {coupons.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground"><Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>لا يوجد أكواد خصم</p></div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* Activity */}
           {activeTab === 'activity' && (
             <motion.div key="activity" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
