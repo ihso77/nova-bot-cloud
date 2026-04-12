@@ -281,7 +281,7 @@ export default function Admin() {
   };
 
   // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
-  const PROXY = 'https://proxy-production-a7b5.up.railway.app';
+  const PROXY = import.meta.env.VITE_PROXY_URL || '';
 
   const [missingAccessUrl, setMissingAccessUrl] = useState('');
   const [botInviteUrl, setBotInviteUrl] = useState('');
@@ -904,6 +904,31 @@ export default function Admin() {
           {activeTab === 'plans-manage' && (
             <motion.div key="plans-manage" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">إدارة الباقات</h2>
+
+              {/* Coins System Notice */}
+              <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                className="glass rounded-xl p-4 mb-6 border border-yellow-500/20 bg-yellow-500/5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                    <Star className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-yellow-400 mb-1">نظام الكوينزات</h3>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>يتوفر نظام دفع بالكوينزات كبديل للدفع بالدولار.</p>
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                          أقل باقة بـ <span className="font-bold">75</span> كوينز
+                        </Badge>
+                        <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                          سعر <span className="font-bold">100</span> كوينز = <span className="font-bold">15m</span>
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {availablePlans.map((plan, i) => (
                   <motion.div key={plan.id} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.1 }}
@@ -912,6 +937,9 @@ export default function Admin() {
                       <Crown className="w-5 h-5 text-yellow-400" />
                       <h3 className="font-bold">{plan.name}</h3>
                     </div>
+                    {plan.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
+                    )}
                     <div className="space-y-2 text-sm text-muted-foreground mb-4">
                       <div className="flex justify-between"><span>السعر</span><span className="text-foreground font-semibold">{plan.price === 0 ? 'مجاني' : `$${plan.price}/شهر`}</span></div>
                       <div className="flex justify-between"><span>التخزين</span><span>{plan.storage_mb >= 1024 ? `${plan.storage_mb / 1024}GB` : `${plan.storage_mb}MB`}</span></div>
