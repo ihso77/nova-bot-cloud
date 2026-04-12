@@ -17,6 +17,15 @@ const CHECK_INTERVAL = 3000; // 3 seconds
 const MAX_SESSION_HOURS = 12;
 const STORAGE_KEY = 'nova_discord_checker';
 
+interface SessionState {
+  available: string[];
+  unavailable: string[];
+  logs: string[];
+  totalChecked: number;
+  startedAt: number | null;
+  length: number;
+}
+
 // Characters used for generating usernames
 const CHARSET_ALPHA = 'abcdefghijklmnopqrstuvwxyz';
 const CHARSET_ALNUM = 'abcdefghijklmnopqrstuvwxyz0123456789';
