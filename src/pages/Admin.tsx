@@ -191,10 +191,45 @@ export default function Admin() {
     setGiftsLoading(false);
   }, []);
 
+  const loadCoupons = useCallback(async () => {
+    setCouponsLoading(true);
+    const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+    if (data) setCoupons(data);
+    setCouponsLoading(false);
+  }, []);
+
+  const handleCreateCoupon = async () => {
+    if (!couponCode.trim() || !couponValue) { toast.error('أكمل جميع الحقول'); return; }
+    const { error } = await supabase.from('coupons').insert({
+      code: couponCode.trim().toUpperCase(),
+      discount_type: couponType,
+      discount_value: parseFloat(couponValue),
+      max_uses: couponMaxUses ? parseInt(couponMaxUses) : null,
+    });
+    if (error) { toast.error('خطأ: ' + error.message); return; }
+    toast.success('تم إنشاء كود الخصم!');
+    setCouponCode(''); setCouponValue(''); setCouponMaxUses('');
+    setShowCouponForm(false);
+    loadCoupons();
+  };
+
+  const handleDeleteCoupon = async (id: string) => {
+    if (!confirm('حذف كود الخصم؟')) return;
+    await supabase.from('coupons').delete().eq('id', id);
+    toast.success('تم الحذف');
+    loadCoupons();
+  };
+
+  const handleToggleCoupon = async (id: string, active: boolean) => {
+    await supabase.from('coupons').update({ is_active: !active }).eq('id', id);
+    loadCoupons();
+  };
+
   useEffect(() => {
     if (activeTab === 'users' && users.length === 0) loadUsers();
     if (activeTab === 'projects' && projects.length === 0) loadProjects();
     if (activeTab === 'gifts' && gifts.length === 0) loadGifts();
+    if (activeTab === 'coupons' && coupons.length === 0) loadCoupons();
     if (activeTab === 'overview') loadOverview();
   }, [activeTab]);
 
