@@ -292,8 +292,14 @@ export default function Admin() {
     setBotLoading(true);
     try {
       const res = await fetch(`${PROXY}/bot/info`, botHeaders);
+      if (!res.ok) {
+        const errText = await res.text().catch(() => 'Unknown error');
+        console.error('[Nova Bot Info] HTTP', res.status, errText);
+        throw new Error(`خطأ من السيرفر (${res.status}) - تحقق أن proxy يعمل على Railway`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      console.log('[Nova Bot Info] OK:', data.bot?.username, '| Guilds:', data.guilds_count);
       setBotInfo(data);
       if (data?.guilds?.length > 0) {
         setSelectedGuild(data.guilds[0].id);
@@ -304,17 +310,28 @@ export default function Admin() {
         const inviteRes = await fetch(`${PROXY}/bot/invite`, botHeaders);
         const inviteData = await inviteRes.json();
         if (inviteData.invite_url) setBotInviteUrl(inviteData.invite_url);
-      } catch {}
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل معلومات البوت'); }
+      } catch (invErr) { console.warn('[Nova Invite] Failed:', invErr); }
+    } catch (e: unknown) {
+      console.error('[Nova Bot Info] Full error:', e);
+      toast.error(e instanceof Error ? e.message : 'فشل تحميل معلومات البوت');
+    }
     setBotLoading(false);
   };
 
   const loadChannels = async (guildId: string) => {
     try {
       const res = await fetch(`${PROXY}/bot/guilds/${guildId}/channels`, botHeaders);
+      if (!res.ok) {
+        console.error('[Nova Channels] HTTP', res.status);
+        throw new Error(`فشل تحميل الرومات (${res.status})`);
+      }
       const data = await res.json();
+      console.log('[Nova Channels] OK:', data?.channels?.length, 'channels');
       setGuildChannels(data?.channels || []);
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات'); }
+    } catch (e: unknown) {
+      console.error('[Nova Channels] Full error:', e);
+      toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات');
+    }
   };
 
   const registerCommands = async () => {
