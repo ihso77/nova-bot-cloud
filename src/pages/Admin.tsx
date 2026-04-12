@@ -236,11 +236,44 @@ export default function Admin() {
     loadCoupons();
   };
 
+  const loadBotInfo = async () => {
+    setBotLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'bot_info' } });
+      if (error) throw error;
+      setBotInfo(data);
+      if (data?.guilds?.length > 0) {
+        setSelectedGuild(data.guilds[0].id);
+        loadChannels(data.guilds[0].id);
+      }
+    } catch (e: any) { toast.error(e.message || 'فشل تحميل معلومات البوت'); }
+    setBotLoading(false);
+  };
+
+  const loadChannels = async (guildId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'get_channels', guild_id: guildId } });
+      if (error) throw error;
+      setGuildChannels(data?.channels || []);
+    } catch (e: any) { toast.error(e.message || 'فشل تحميل الرومات'); }
+  };
+
+  const registerCommands = async () => {
+    setBotLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'register_commands' } });
+      if (error) throw error;
+      toast.success(data?.message || 'تم تسجيل الأوامر!');
+    } catch (e: any) { toast.error(e.message || 'فشل تسجيل الأوامر'); }
+    setBotLoading(false);
+  };
+
   useEffect(() => {
     if (activeTab === 'users' && users.length === 0) loadUsers();
     if (activeTab === 'projects' && projects.length === 0) loadProjects();
     if (activeTab === 'gifts' && gifts.length === 0) loadGifts();
     if (activeTab === 'coupons' && coupons.length === 0) loadCoupons();
+    if (activeTab === 'discord-bot' && !botInfo) loadBotInfo();
     if (activeTab === 'overview') loadOverview();
   }, [activeTab]);
 
