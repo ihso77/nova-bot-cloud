@@ -92,6 +92,15 @@ export default function Admin() {
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const [giftMessage, setGiftMessage] = useState('');
 
+  // Coupons
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [showCouponForm, setShowCouponForm] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponType, setCouponType] = useState<'percentage' | 'fixed'>('percentage');
+  const [couponValue, setCouponValue] = useState('');
+  const [couponMaxUses, setCouponMaxUses] = useState('');
+
   useEffect(() => {
     if (!isAdmin) return;
     loadOverview();
