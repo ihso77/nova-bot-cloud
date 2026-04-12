@@ -117,7 +117,7 @@ export default function Admin() {
     if (maintData) setMaintenanceMode(maintData.value === true || maintData.value === 'true');
 
     const { data: nameData } = await supabase.from('settings').select('value').eq('key', 'site_name').maybeSingle();
-    if (nameData) setSiteName(nameData.value || 'Nova VPS');
+    if (nameData) setSiteName(String(nameData.value) || 'Nova VPS');
   };
 
   const loadPlans = async () => {
@@ -244,7 +244,7 @@ export default function Admin() {
   };
 
   const handleBanUser = async (userId: string) => {
-    await supabase.from('user_roles').upsert({ user_id: userId, role: 'banned' }, { onConflict: 'user_id' });
+    await supabase.from('user_roles').upsert({ user_id: userId, role: 'user' as const }, { onConflict: 'user_id' });
     toast.success('تم حظر المستخدم');
     loadUsers();
   };

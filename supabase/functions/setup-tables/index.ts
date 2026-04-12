@@ -40,10 +40,9 @@ serve(async (req) => {
 
       CREATE POLICY "Anyone can update gifts" ON public.gifts
         FOR UPDATE USING (true);
-    `}).catch(async (e: any) => {
-      // If rpc not available, try direct SQL via the postgres connection
-      console.log('RPC failed, trying direct approach...');
-    });
+    `});
+    // If rpc fails, try direct approach
+    console.log('Trying setup via RPC...');
 
     // Fallback: try creating via the Supabase SQL API
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -75,8 +74,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true, message: 'Tables created' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

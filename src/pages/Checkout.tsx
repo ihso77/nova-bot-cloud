@@ -76,15 +76,17 @@ export default function Checkout() {
       // Save payment record
       const payId = data.id || data.payment_id;
       if (payId) {
-        await supabase.from('payments').insert({
-          id: payId,
-          user_id: user.id,
-          plan_id: plan.id,
-          amount: plan.price,
-          currency: 'USD',
-          status: 'pending',
-          provider: 'paymento',
-        }).catch(() => {});
+        try {
+          await supabase.from('payments').insert({
+            id: payId,
+            user_id: user.id,
+            plan_id: plan.id,
+            amount: plan.price,
+            currency: 'USD',
+            status: 'pending',
+            provider: 'paymento',
+          });
+        } catch {}
       }
 
       setStep('redirecting');
