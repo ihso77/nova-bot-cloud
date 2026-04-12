@@ -236,35 +236,40 @@ export default function Admin() {
     loadCoupons();
   };
 
+  // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
+  const PROXY = 'https://proxy-production-a7b5.up.railway.app';
+
   const loadBotInfo = async () => {
     setBotLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'bot_info' } });
-      if (error) throw error;
+      const res = await fetch(`${PROXY}/bot/info`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setBotInfo(data);
       if (data?.guilds?.length > 0) {
         setSelectedGuild(data.guilds[0].id);
         loadChannels(data.guilds[0].id);
       }
-    } catch (e: any) { toast.error(e.message || 'فشل تحميل معلومات البوت'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل معلومات البوت'); }
     setBotLoading(false);
   };
 
   const loadChannels = async (guildId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'get_channels', guild_id: guildId } });
-      if (error) throw error;
+      const res = await fetch(`${PROXY}/bot/guilds/${guildId}/channels`);
+      const data = await res.json();
       setGuildChannels(data?.channels || []);
-    } catch (e: any) { toast.error(e.message || 'فشل تحميل الرومات'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات'); }
   };
 
   const registerCommands = async () => {
     setBotLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('discord-bot', { body: { action: 'register_commands' } });
-      if (error) throw error;
-      toast.success(data?.message || 'تم تسجيل الأوامر!');
-    } catch (e: any) { toast.error(e.message || 'فشل تسجيل الأوامر'); }
+      const res = await fetch(`${PROXY}/bot/commands/register`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      toast.success(data.message || 'تم تسجيل الأوامر!');
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تسجيل الأوامر'); }
     setBotLoading(false);
   };
 
@@ -887,10 +892,11 @@ export default function Admin() {
                         onClick={async () => {
                           setBotLoading(true);
                           try {
-                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_prices', channel_id: selectedChannel } });
-                            if (res.error) throw res.error;
+                            const res = await fetch(`${PROXY}/bot/send-prices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel }) });
+                            const data = await res.json();
+                            if (data.error) throw new Error(data.error);
                             toast.success('تم إرسال الأسعار!');
-                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
                           setBotLoading(false);
                         }}>
                         <CreditCard className="w-4 h-4 ml-1" /> إرسال الأسعار
@@ -902,11 +908,12 @@ export default function Admin() {
                         onClick={async () => {
                           setBotLoading(true);
                           try {
-                            const res = await supabase.functions.invoke('discord-bot', { body: { action: 'send_announcement', channel_id: selectedChannel, message: announceMsg } });
-                            if (res.error) throw res.error;
+                            const res = await fetch(`${PROXY}/bot/announce`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel_id: selectedChannel, message: announceMsg }) });
+                            const data = await res.json();
+                            if (data.error) throw new Error(data.error);
                             toast.success('تم إرسال الإعلان!');
                             setAnnounceMsg('');
-                          } catch (e: any) { toast.error(e.message || 'فشل الإرسال'); }
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
                           setBotLoading(false);
                         }}>
                         <Send className="w-4 h-4" />
