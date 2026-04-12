@@ -58,15 +58,15 @@ export default function Index() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-sm sm:max-w-none justify-center items-center"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
         >
-          <Link to="/plans" className="w-full sm:w-auto">
-            <Button size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-8 sm:px-10 glow-primary w-full sm:w-auto">
+          <Link to="/plans">
+            <Button size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-8 sm:px-10 glow-primary">
               تصفح الباقات
             </Button>
           </Link>
-          <Link to="/register" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="text-base sm:text-lg px-8 sm:px-10 border-primary/30 hover:bg-primary/10 w-full sm:w-auto">
+          <Link to="/register">
+            <Button size="lg" variant="outline" className="text-base sm:text-lg px-8 sm:px-10 border-primary/30 hover:bg-primary/10">
               ابدأ مجاناً
             </Button>
           </Link>
