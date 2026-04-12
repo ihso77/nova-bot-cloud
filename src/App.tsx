@@ -15,6 +15,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import Admin from "./pages/Admin";
 import DiscordUsernameChecker from "./pages/DiscordUsernameChecker";
+import Tools from "./pages/Tools";
 import NotFound from "./pages/NotFound";
 import GiftPopup from "./components/GiftPopup";
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/tools" element={<Tools />} />
             <Route path="/tools/discord-username-checker" element={<DiscordUsernameChecker />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

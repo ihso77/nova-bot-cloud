@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { LogOut, User, Shield, Server, Search, Menu } from 'lucide-react';
+import { LogOut, User, Shield, Server, Search, Menu, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Navbar() {
@@ -18,8 +18,8 @@ export default function Navbar() {
       <Link to="/plans" className={navLinkClass} onClick={() => setOpen(false)}>
         الباقات
       </Link>
-      <Link to="/tools/discord-username-checker" className={`${navLinkClass} flex items-center gap-2`} onClick={() => setOpen(false)}>
-        <Search className="w-4 h-4" /> فاحص اليوزرات
+      <Link to="/tools" className={`${navLinkClass} flex items-center gap-2`} onClick={() => setOpen(false)}>
+        <Wrench className="w-4 h-4" /> ادوات
       </Link>
       {user ? (
         <>
@@ -67,8 +67,8 @@ export default function Navbar() {
           <Link to="/plans" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             الباقات
           </Link>
-          <Link to="/tools/discord-username-checker" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-            <Search className="w-3 h-3" /> فاحص اليوزرات
+          <Link to="/tools" className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <Wrench className="w-3 h-3" /> ادوات
           </Link>
           {user ? (
             <>
