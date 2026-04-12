@@ -24,15 +24,15 @@ export default function Index() {
       <ParticlesBackground />
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-4">
+      <section className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center px-4 sm:px-6">
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, type: 'spring' }}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         >
-          <div className="w-24 h-24 rounded-2xl gradient-bg flex items-center justify-center mx-auto glow-primary floating">
-            <Server className="w-12 h-12 text-primary-foreground" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl gradient-bg flex items-center justify-center mx-auto glow-primary floating">
+            <Server className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-primary-foreground" />
           </div>
         </motion.div>
 
@@ -40,7 +40,7 @@ export default function Index() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-5xl md:text-7xl font-black mb-6"
+          className="text-4xl sm:text-5xl md:text-7xl font-black mb-4 sm:mb-6"
         >
           <span className="gradient-text">Nova VPS</span>
         </motion.h1>
@@ -49,7 +49,7 @@ export default function Index() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-xl md:text-2xl text-muted-foreground max-w-2xl mb-10"
+          className="text-base sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mb-8 sm:mb-10 px-2"
         >
           استضف بوتات ديسكورد بكل سهولة وأداء عالي
         </motion.p>
@@ -58,15 +58,15 @@ export default function Index() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4"
+          className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-sm sm:max-w-none"
         >
-          <Link to="/plans">
-            <Button size="lg" className="gradient-bg text-primary-foreground text-lg px-8 glow-primary w-full sm:w-auto">
-              تصفح الباقات <ArrowLeft className="w-5 h-5 mr-2" />
+          <Link to="/plans" className="w-full sm:w-auto">
+            <Button size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-6 sm:px-8 glow-primary w-full">
+              تصفح الباقات <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             </Button>
           </Link>
-          <Link to="/register">
-            <Button size="lg" variant="outline" className="text-lg px-8 border-primary/30 hover:bg-primary/10 w-full sm:w-auto">
+          <Link to="/register" className="w-full sm:w-auto">
+            <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 border-primary/30 hover:bg-primary/10 w-full">
               ابدأ مجاناً
             </Button>
           </Link>
@@ -77,33 +77,33 @@ export default function Index() {
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-3xl"
+          className="mt-14 sm:mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-3xl"
         >
           {stats.map((stat, i) => (
             <div key={i} className="text-center">
-              <div className="text-2xl md:text-3xl font-black gradient-text">{stat.value}</div>
-              <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-black gradient-text">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground mt-1">{stat.label}</div>
             </div>
           ))}
         </motion.div>
       </section>
 
       {/* Features */}
-      <section className="relative z-10 py-24 px-4">
+      <section className="relative z-10 py-16 sm:py-24 px-4">
         <div className="container mx-auto">
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-8 sm:mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-black mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black mb-3 sm:mb-4">
               <span className="gradient-text">لماذا Nova VPS؟</span>
             </h2>
-            <p className="text-muted-foreground text-lg">كل ما تحتاجه لاستضافة بوتاتك في مكان واحد</p>
+            <p className="text-muted-foreground text-sm sm:text-lg">كل ما تحتاجه لاستضافة بوتاتك في مكان واحد</p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 max-w-6xl mx-auto">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -112,13 +112,13 @@ export default function Index() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className="glass rounded-xl p-6 text-center"
+                className="glass rounded-xl p-4 sm:p-6 text-center"
               >
-                <div className="w-14 h-14 rounded-lg gradient-bg flex items-center justify-center mx-auto mb-4">
-                  <f.icon className="w-7 h-7 text-primary-foreground" />
+                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-lg gradient-bg flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <f.icon className="w-5 h-5 sm:w-7 sm:h-7 text-primary-foreground" />
                 </div>
-                <h3 className="text-lg font-bold mb-2">{f.title}</h3>
-                <p className="text-muted-foreground text-sm">{f.desc}</p>
+                <h3 className="text-sm sm:text-lg font-bold mb-1 sm:mb-2">{f.title}</h3>
+                <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -126,9 +126,9 @@ export default function Index() {
       </section>
 
       {/* Footer / Website Info */}
-      <footer className="relative z-10 border-t border-border/30 py-12 px-4">
+      <footer className="relative z-10 border-t border-border/30 py-8 sm:py-12 px-4">
         <div className="container mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-10 mb-8 sm:mb-10">
             {/* About */}
             <div>
               <div className="flex items-center gap-2 mb-4">
@@ -170,7 +170,7 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="border-t border-border/30 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="border-t border-border/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
             <p className="text-xs text-muted-foreground">
               Nova VPS &copy; {new Date().getFullYear()} - جميع الحقوق محفوظة
             </p>

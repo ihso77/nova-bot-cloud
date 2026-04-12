@@ -75,19 +75,19 @@ export default function Plans() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4" dir="rtl">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto">
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-black mb-4">
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-10 sm:mb-16">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4">
             <span className="gradient-text">اختر باقتك</span>
           </h1>
-          <p className="text-muted-foreground text-lg">باقات تناسب جميع احتياجاتك</p>
+          <p className="text-muted-foreground text-sm sm:text-lg">باقات تناسب جميع احتياجاتك</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
           {plans.map((plan, i) => (
             <motion.div
               key={plan.id}
@@ -95,7 +95,7 @@ export default function Plans() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: i * 0.1 }}
               whileHover={{ y: -8, scale: 1.02 }}
-              className={`glass rounded-2xl p-6 relative ${i === 2 ? 'glow-primary ring-1 ring-primary/30' : ''}`}
+              className={`glass rounded-2xl p-5 sm:p-6 relative ${i === 2 ? 'glow-primary ring-1 ring-primary/30' : ''}`}
             >
               {i === 2 && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gradient-bg text-primary-foreground">
@@ -108,14 +108,14 @@ export default function Plans() {
                 </Badge>
               )}
 
-              <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-              <p className="text-muted-foreground text-sm mb-4">{plan.description}</p>
+              <h3 className="text-lg sm:text-xl font-bold mb-2">{plan.name}</h3>
+              <p className="text-muted-foreground text-xs sm:text-sm mb-4">{plan.description}</p>
 
-              <div className="mb-6">
-                <span className="text-3xl font-black gradient-text">
+              <div className="mb-5 sm:mb-6">
+                <span className="text-2xl sm:text-3xl font-black gradient-text">
                   {plan.price === 0 ? 'مجاناً' : `$${plan.price}`}
                 </span>
-                {plan.price > 0 && <span className="text-muted-foreground text-sm">/شهرياً</span>}
+                {plan.price > 0 && <span className="text-muted-foreground text-xs sm:text-sm">/شهرياً</span>}
               </div>
 
               <div className="space-y-2 mb-6 text-sm">
@@ -133,7 +133,7 @@ export default function Plans() {
                 </div>
               </div>
 
-              <div className="space-y-2 mb-6">
+              <div className="space-y-2 mb-5 sm:mb-6">
                 {plan.features.map((f, fi) => (
                   <div key={fi} className="flex items-center gap-2 text-sm">
                     <Check className="w-4 h-4 text-success flex-shrink-0" />

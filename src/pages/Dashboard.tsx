@@ -85,16 +85,16 @@ export default function Dashboard() {
     error: 'خطأ',
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4" dir="rtl">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto max-w-5xl">
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold gradient-text">مشاريعي</h1>
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text">مشاريعي</h1>
           {subscriptions.length > 0 && (
-              <Link to="/dashboard/new-project">
-                <Button className="gradient-bg text-primary-foreground">
+              <Link to="/dashboard/new-project" className="w-full sm:w-auto">
+                <Button className="gradient-bg text-primary-foreground w-full sm:w-auto justify-center">
                   <Plus className="w-4 h-4 ml-2" /> مشروع جديد
                 </Button>
               </Link>
@@ -151,7 +151,7 @@ export default function Dashboard() {
         })()}
 
         {subscriptions.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center mb-8">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 sm:p-12 text-center mb-6 sm:mb-8">
             <p className="text-muted-foreground mb-4">ليس لديك اشتراك فعال</p>
             <Link to="/plans">
               <Button className="gradient-bg text-primary-foreground">تصفح الباقات</Button>
@@ -171,7 +171,7 @@ export default function Dashboard() {
             </Link>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {projects.map((project, i) => (
               <motion.div
                 key={project.id}

@@ -25,12 +25,14 @@ const navItems = [
   { id: 'overview', icon: BarChart3, label: 'نظرة عامة' },
   { id: 'users', icon: Users, label: 'المستخدمين' },
   { id: 'projects', icon: Server, label: 'المشاريع' },
+  { id: 'payments', icon: CreditCard, label: 'المدفوعات' },
   { id: 'discord-bot', icon: Bot, label: 'بوت ديسكورد' },
   { id: 'coupons', icon: Ticket, label: 'أكواد الخصم' },
   { id: 'gifts', icon: Gift, label: 'إهداء الباقات' },
+  { id: 'notifications', icon: MessageSquare, label: 'الإعلانات' },
   { id: 'settings', icon: Settings, label: 'إعدادات الموقع' },
   { id: 'plans-manage', icon: Crown, label: 'إدارة الباقات' },
-  { id: 'activity', icon: Activity, label: 'النشاط' },
+  { id: 'logs', icon: Activity, label: 'سجل النشاط' },
 ];
 
 interface AdminUser {
@@ -113,6 +115,21 @@ export default function Admin() {
   const [guildChannels, setGuildChannels] = useState<any[]>([]);
   const [selectedChannel, setSelectedChannel] = useState('');
   const [announceMsg, setAnnounceMsg] = useState('');
+
+  // Payments
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Notifications/Announcements
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [showNotifForm, setShowNotifForm] = useState(false);
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifType, setNotifType] = useState<'info' | 'warning' | 'success'>('info');
+
+  // Server Logs
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -211,6 +228,31 @@ export default function Admin() {
     setCouponsLoading(false);
   }, []);
 
+  const loadPayments = useCallback(async () => {
+    setPaymentsLoading(true);
+    const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false }).limit(100);
+    if (data) setPayments(data);
+    setPaymentsLoading(false);
+  }, []);
+
+  const loadNotifications = useCallback(async () => {
+    setNotificationsLoading(true);
+    try {
+      const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+      if (data) setNotifications(data);
+    } catch {}
+    setNotificationsLoading(false);
+  }, []);
+
+  const loadLogs = useCallback(async () => {
+    setLogsLoading(true);
+    try {
+      const { data } = await supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100);
+      if (data) setLogs(data);
+    } catch {}
+    setLogsLoading(false);
+  }, []);
+
   const handleCreateCoupon = async () => {
     if (!couponCode.trim() || !couponValue) { toast.error('أكمل جميع الحقول'); return; }
     const { error } = await supabase.from('coupons').insert({
@@ -280,6 +322,9 @@ export default function Admin() {
     if (activeTab === 'projects' && projects.length === 0) loadProjects();
     if (activeTab === 'gifts' && gifts.length === 0) loadGifts();
     if (activeTab === 'coupons' && coupons.length === 0) loadCoupons();
+    if (activeTab === 'payments' && payments.length === 0) loadPayments();
+    if (activeTab === 'notifications' && notifications.length === 0) loadNotifications();
+    if (activeTab === 'logs' && logs.length === 0) loadLogs();
     if (activeTab === 'discord-bot' && !botInfo) loadBotInfo();
     if (activeTab === 'overview') loadOverview();
   }, [activeTab]);
@@ -350,7 +395,7 @@ export default function Admin() {
     return new Date(d).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => (
     <div className="space-y-0.5">
@@ -445,13 +490,13 @@ export default function Admin() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 md:mt-0 mt-12">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 md:mt-0 mt-12">
         <AnimatePresence mode="wait">
           {/* Overview */}
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-2xl font-bold mb-6 gradient-text">نظرة عامة</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">نظرة عامة</h2>
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 {[
                   { icon: Users, label: 'المستخدمين', value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
                   { icon: Server, label: 'المشاريع', value: stats.projects, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/10' },
@@ -463,22 +508,22 @@ export default function Admin() {
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: i * 0.1 }}
-                    className="glass rounded-xl p-5 group hover:scale-[1.02] transition-transform"
+                    className="glass rounded-xl p-3 sm:p-5 group hover:scale-[1.02] transition-transform"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`w-10 h-10 rounded-lg ${s.iconBg} flex items-center justify-center`}>
-                        <s.icon className="w-5 h-5 text-primary" />
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${s.iconBg} flex items-center justify-center`}>
+                        <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                       </div>
                       <TrendingUp className="w-4 h-4 text-muted-foreground/30" />
                     </div>
-                    <p className="text-3xl font-black mb-1">{s.value}</p>
-                    <p className="text-sm text-muted-foreground">{s.label}</p>
+                    <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">{s.value}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{s.label}</p>
                   </motion.div>
                 ))}
               </div>
 
               {/* Quick Actions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
                   className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
@@ -530,8 +575,8 @@ export default function Admin() {
           {/* Users */}
           {activeTab === 'users' && (
             <motion.div key="users" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold gradient-text">المستخدمين</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المستخدمين</h2>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{users.length} مستخدم</Badge>
                   <Button size="sm" variant="outline" onClick={loadUsers}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
@@ -617,8 +662,8 @@ export default function Admin() {
           {/* Projects */}
           {activeTab === 'projects' && (
             <motion.div key="projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold gradient-text">المشاريع</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المشاريع</h2>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{projects.length} مشروع</Badge>
                   <Button size="sm" variant="outline" onClick={loadProjects}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
@@ -670,7 +715,7 @@ export default function Admin() {
           {activeTab === 'gifts' && (
             <motion.div key="gifts" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold gradient-text">إهداء الباقات</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">إهداء الباقات</h2>
                 <Button className="gradient-bg text-primary-foreground" onClick={() => setShowGiftForm(true)}>
                   <Gift className="w-4 h-4 ml-2" /> إرسال هدية
                 </Button>
@@ -685,7 +730,7 @@ export default function Admin() {
                   </div>
                   <div className="space-y-3">
                     <Input placeholder="بريد المستخدم المرسل إليه..." value={giftEmail} onChange={e => setGiftEmail(e.target.value)} dir="ltr" />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       <select
                         value={giftPlanId}
                         onChange={e => setGiftPlanId(e.target.value)}
@@ -740,7 +785,7 @@ export default function Admin() {
           {/* Settings */}
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-2xl font-bold mb-6 gradient-text">إعدادات الموقع</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">إعدادات الموقع</h2>
 
               <div className="space-y-4">
                 {/* Maintenance Mode */}
@@ -842,8 +887,8 @@ export default function Admin() {
           {/* Plans Manage */}
           {activeTab === 'plans-manage' && (
             <motion.div key="plans-manage" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-2xl font-bold mb-6 gradient-text">إدارة الباقات</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">إدارة الباقات</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {availablePlans.map((plan, i) => (
                   <motion.div key={plan.id} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.1 }}
                     className="glass rounded-xl p-5">
@@ -867,7 +912,7 @@ export default function Admin() {
           {/* Discord Bot */}
           {activeTab === 'discord-bot' && (
             <motion.div key="discord-bot" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-2xl font-bold mb-6 gradient-text">بوت ديسكورد</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">بوت ديسكورد</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Bot Info */}
@@ -902,11 +947,29 @@ export default function Admin() {
                     <h3 className="font-bold">الأوامر</h3>
                   </div>
                   <div className="space-y-2 text-sm mb-4">
+                    <p className="text-xs font-semibold text-primary mb-1">📋 أوامر عامة</p>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/help</code> - عرض الأوامر</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/prices</code> - إرسال الأسعار</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/serverinfo</code> - معلومات السيرفر</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/user</code> - معلومات مستخدم</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/avatar</code> - صورة بروفايل</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/stats</code> - إحصائيات Nova</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/ping</code> - سرعة البوت</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/invite</code> - رابط دعوة البوت</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/poll</code> - إنشاء تصويت</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - إرسال إعلان</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - حالة الخدمة</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/uptime</code> - مدة التشغيل</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/roles</code> - قائمة الرتب</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/emoji-info</code> - معلومات الإيموجي</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/banner</code> - بانر السيرفر</div>
+                    <p className="text-xs font-semibold text-green-400 mt-3 mb-1">🌐 أوامر الموقع</p>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/site-check</code> - فحص خدمات الموقع (حقيقي)</div>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/top-servers</code> - أفضل المشاريع النشطة</div>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/plans-detail</code> - تفاصيل الباقات والمقارنة</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/lookup</code> - بحث مستخدم (أدمن)</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/recent-payments</code> - آخر المدفوعات (أدمن)</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/set-status-channel</code> - تعيين روم الحالة (أدمن)</div>
                   </div>
                   <div className="space-y-2">
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
@@ -987,7 +1050,7 @@ export default function Admin() {
           {activeTab === 'coupons' && (
             <motion.div key="coupons" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold gradient-text">أكواد الخصم</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">أكواد الخصم</h2>
                 <Button className="gradient-bg text-primary-foreground" onClick={() => setShowCouponForm(true)}>
                   <Plus className="w-4 h-4 ml-2" /> إضافة كود
                 </Button>
@@ -1002,7 +1065,7 @@ export default function Admin() {
                   </div>
                   <div className="space-y-3">
                     <Input placeholder="كود الخصم (مثل: NOVA50)" value={couponCode} onChange={e => setCouponCode(e.target.value)} dir="ltr" />
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <select value={couponType} onChange={e => setCouponType(e.target.value as 'percentage' | 'fixed')}
                         className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm">
                         <option value="percentage">نسبة مئوية (%)</option>
@@ -1056,15 +1119,200 @@ export default function Admin() {
             </motion.div>
           )}
 
-          {/* Activity */}
-          {activeTab === 'activity' && (
-            <motion.div key="activity" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-2xl font-bold mb-6 gradient-text">سجل النشاط</h2>
-              <div className="glass rounded-xl p-8 text-center text-muted-foreground">
-                <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>سجل النشاط سيظهر هنا</p>
-                <p className="text-sm mt-1">الميزة قيد التطوير</p>
+          {/* Payments */}
+          {activeTab === 'payments' && (
+            <motion.div key="payments" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المدفوعات</h2>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{payments.length} عملية</Badge>
+                  <Button size="sm" variant="outline" onClick={loadPayments}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                </div>
               </div>
+
+              {paymentsLoading ? (
+                <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              ) : payments.length > 0 ? (
+                <div className="glass rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/30">
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">#</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">المبلغ</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">الحالة</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">العملة</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">رقم الطلب</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">التاريخ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payments.map((p, i) => (
+                          <tr key={p.id || i} className="border-b border-border/20 hover:bg-secondary/30 transition-colors">
+                            <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
+                            <td className="px-4 py-3 font-semibold">${p.amount || p.fiat_amount || '0.00'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <Badge className={p.status === 'paid' || p.status === 'completed' ? 'bg-green-500/20 text-green-400' : p.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}>
+                                {p.status === 'paid' || p.status === 'completed' ? 'مكتمل' : p.status === 'pending' ? 'قيد الانتظار' : p.status === 'cancelled' ? 'ملغي' : p.status || 'غير معروف'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{p.currency || 'USD'}</td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs font-mono" dir="ltr">{p.order_id || p.token?.substring(0, 12) || '-'}</td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(p.created_at)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+                  <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>لا يوجد مدفوعات بعد</p>
+                  <p className="text-sm mt-1">ستظهر عمليات الدفع هنا تلقائياً</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Notifications */}
+          {activeTab === 'notifications' && (
+            <motion.div key="notifications" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">الإعلانات والإشعارات</h2>
+                <Button className="gradient-bg text-primary-foreground" onClick={() => setShowNotifForm(true)}>
+                  <Plus className="w-4 h-4 ml-2" /> إعلان جديد
+                </Button>
+              </div>
+
+              {showNotifForm && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="glass rounded-xl p-5 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> إعلان جديد</h3>
+                    <Button size="sm" variant="ghost" onClick={() => setShowNotifForm(false)}><X className="w-4 h-4" /></Button>
+                  </div>
+                  <div className="space-y-3">
+                    <textarea
+                      placeholder="نص الإعلان أو الإشعار..."
+                      value={notifMessage}
+                      onChange={e => setNotifMessage(e.target.value)}
+                      className="w-full h-24 rounded-md border border-border bg-secondary px-3 py-2 text-sm resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <select value={notifType} onChange={e => setNotifType(e.target.value as 'info' | 'warning' | 'success')}
+                        className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm">
+                        <option value="info">معلومة</option>
+                        <option value="warning">تحذير</option>
+                        <option value="success">نجاح</option>
+                      </select>
+                    </div>
+                    <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
+                      if (!notifMessage.trim()) { toast.error('أدخل نص الإعلان'); return; }
+                      try {
+                        await supabase.from('notifications').insert({
+                          message: notifMessage.trim(),
+                          type: notifType,
+                          active: true,
+                        });
+                        toast.success('تم إنشاء الإعلان!');
+                        setNotifMessage(''); setShowNotifForm(false);
+                        loadNotifications();
+                      } catch (e: unknown) {
+                        toast.error('خطأ في إنشاء الإعلان');
+                      }
+                    }}>
+                      <Send className="w-4 h-4 ml-2" /> نشر الإعلان
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {notificationsLoading ? (
+                <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((n, i) => (
+                    <motion.div key={n.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                      className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${n.type === 'success' ? 'bg-green-500/10' : n.type === 'warning' ? 'bg-yellow-500/10' : 'bg-blue-500/10'}`}>
+                          <MessageSquare className={`w-5 h-5 ${n.type === 'success' ? 'text-green-400' : n.type === 'warning' ? 'text-yellow-400' : 'text-blue-400'}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium">{n.message}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(n.created_at)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge className={n.type === 'success' ? 'bg-green-500/20 text-green-400' : n.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}>
+                          {n.type === 'success' ? 'نجاح' : n.type === 'warning' ? 'تحذير' : 'معلومة'}
+                        </Badge>
+                        <Switch checked={n.active} onCheckedChange={async () => {
+                          await supabase.from('notifications').update({ active: !n.active }).eq('id', n.id);
+                          loadNotifications();
+                        }} />
+                      </div>
+                    </motion.div>
+                  ))}
+                  {notifications.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>لا يوجد إعلانات بعد</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Activity Logs */}
+          {activeTab === 'logs' && (
+            <motion.div key="logs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">سجل النشاط</h2>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{logs.length} نشاط</Badge>
+                  <Button size="sm" variant="outline" onClick={loadLogs}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                </div>
+              </div>
+
+              {logsLoading ? (
+                <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+              ) : logs.length > 0 ? (
+                <div className="space-y-2">
+                  {logs.map((log, i) => (
+                    <motion.div key={log.id || i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}
+                      className="glass rounded-lg p-3 flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        log.action_type === 'create' ? 'bg-green-500/10' :
+                        log.action_type === 'delete' ? 'bg-red-500/10' :
+                        log.action_type === 'update' ? 'bg-blue-500/10' :
+                        log.action_type === 'login' ? 'bg-purple-500/10' : 'bg-gray-500/10'
+                      }`}>
+                        {log.action_type === 'create' ? <Plus className="w-4 h-4 text-green-400" /> :
+                         log.action_type === 'delete' ? <Trash2 className="w-4 h-4 text-red-400" /> :
+                         log.action_type === 'update' ? <Wrench className="w-4 h-4 text-blue-400" /> :
+                         log.action_type === 'login' ? <UserIcon className="w-4 h-4 text-purple-400" /> :
+                         <Activity className="w-4 h-4 text-gray-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{log.description || log.action_type}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {log.user_email || log.user_id?.substring(0, 8) || 'النظام'}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(log.created_at)}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="glass rounded-xl p-8 text-center text-muted-foreground">
+                  <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>لا يوجد نشاطات مسجلة بعد</p>
+                  <p className="text-sm mt-1">ستظهر الأنشطة هنا تلقائياً</p>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

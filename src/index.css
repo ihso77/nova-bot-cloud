@@ -117,6 +117,7 @@
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: hsl(var(--background));
@@ -127,6 +128,31 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.5);
+}
+
+/* Touch-friendly improvements */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 36px;
+  }
+  
+  input, select, textarea {
+    min-height: 40px;
+    font-size: 16px !important; /* Prevents iOS zoom */
+  }
+  
+  .glass {
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* Safe area for notched phones */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* CodeMirror Editor Styles */

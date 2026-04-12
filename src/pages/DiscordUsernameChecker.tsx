@@ -310,21 +310,21 @@ export default function DiscordUsernameChecker() {
   const lengthOptions = [3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4" dir="rtl">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-3 sm:px-4" dir="rtl">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="text-center mb-10"
+          className="text-center mb-6 sm:mb-10"
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Shield className="w-10 h-10 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-black">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black">
               <span className="gradient-text">فاحص يوزرات ديسكورد</span>
             </h1>
           </div>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-sm sm:text-lg">
             أداة مجانية للبحث عن يوزرات ديسكورد غير مستخدمة
           </p>
         </motion.div>
@@ -335,13 +335,13 @@ export default function DiscordUsernameChecker() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="glass p-6 mb-6">
+          <Card className="glass p-4 sm:p-6 mb-4 sm:mb-6">
             {/* Length Selection */}
             <div className="mb-6">
               <label className="block text-sm font-semibold mb-3 text-muted-foreground">
                 عدد حروف اليوزر المطلوب
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {lengthOptions.map(len => (
                   <Button
                     key={len}
@@ -365,7 +365,7 @@ export default function DiscordUsernameChecker() {
             <Separator className="my-4" />
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="w-4 h-4 text-primary" />
                 <span className="text-muted-foreground">إجمالي الفحص:</span>
@@ -411,7 +411,7 @@ export default function DiscordUsernameChecker() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {!isRunning ? (
                 <Button
                   onClick={startChecking}
@@ -530,7 +530,7 @@ export default function DiscordUsernameChecker() {
                     <p className="text-sm mt-1">شغّل الفحص للبدء</p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[400px]">
+                  <ScrollArea className="h-[300px] sm:h-[400px]">
                     <div className="space-y-1.5">
                       {available.map((username, i) => (
                         <motion.div
@@ -593,7 +593,7 @@ export default function DiscordUsernameChecker() {
                     <p className="text-sm mt-1">اليوزرات المستخدمة ستظهر هنا</p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[400px]">
+                  <ScrollArea className="h-[300px] sm:h-[400px]">
                     <div className="space-y-1">
                       {unavailable.map((username, i) => (
                         <div
@@ -678,8 +678,8 @@ export default function DiscordUsernameChecker() {
           transition={{ delay: 0.3 }}
           className="mt-8"
         >
-          <Card className="glass p-6">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
+          <Card className="glass p-4 sm:p-6">
+            <h3 className="font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-yellow-500" />
               كيف تعمل الأداة؟
             </h3>

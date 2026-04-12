@@ -682,7 +682,7 @@ export default function ProjectEditor() {
     return { color: 'text-gray-400 bg-gray-400/10', label: 'متوقف' };
   })();
 
-  if (!project) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (!project) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="h-screen pt-16 flex flex-col" dir="rtl">
@@ -704,20 +704,20 @@ export default function ProjectEditor() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           {detectedToken ? (
-            <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1" title="تم العثور على التوكن في الكود">
+            <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1 hidden sm:inline-flex" title="تم العثور على التوكن في الكود">
               <Shield className="w-3.5 h-3.5" />
               توكن متوفر
             </Button>
           ) : (
-            <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 text-xs gap-1" onClick={() => setShowTokenDialog(true)} title="أدخل التوكن يدوياً">
+            <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 text-xs gap-1 hidden sm:inline-flex" onClick={() => setShowTokenDialog(true)} title="أدخل التوكن يدوياً">
               <Shield className="w-3.5 h-3.5" />
               أدخل التوكن
             </Button>
           )}
 
-          <Separator orientation="vertical" className="h-6 mx-1" />
+          <Separator orientation="vertical" className="h-6 mx-0.5 sm:mx-1" />
 
           <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
             <TerminalIcon className="w-4 h-4" />
@@ -730,12 +730,12 @@ export default function ProjectEditor() {
           </Button>
 
           {project.status === 'running' || isDeploying ? (
-            <Button size="sm" variant="destructive" onClick={handleStopBot} disabled={isDeploying} className="gap-1">
-              <Square className="w-4 h-4" /> إيقاف
+            <Button size="sm" variant="destructive" onClick={handleStopBot} disabled={isDeploying} className="gap-1 text-xs sm:text-sm">
+              <Square className="w-4 h-4" /> <span className="hidden sm:inline">إيقاف</span>
             </Button>
           ) : (
-            <Button size="sm" className="gradient-bg text-primary-foreground gap-1" onClick={handleStartBot}>
-              <Play className="w-4 h-4" /> تشغيل
+            <Button size="sm" className="gradient-bg text-primary-foreground gap-1 text-xs sm:text-sm" onClick={handleStartBot}>
+              <Play className="w-4 h-4" /> <span className="hidden sm:inline">تشغيل</span>
             </Button>
           )}
         </div>
@@ -931,7 +931,7 @@ export default function ProjectEditor() {
 
           {/* Bottom Panel - Console & Terminal */}
           {showBottomPanel && (
-            <div className="border-t border-border/30 flex flex-col flex-shrink-0" style={{ height: consoleHeight }}>
+            <div className="border-t border-border/30 flex flex-col flex-shrink-0" style={{ height: Math.min(consoleHeight, window.innerWidth < 640 ? 200 : 500) }}>
               {/* Tab bar */}
               <div className="flex items-center justify-between px-1 border-b border-border/30 flex-shrink-0 bg-card/80">
                 <div className="flex items-center">

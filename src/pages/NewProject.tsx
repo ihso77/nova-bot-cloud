@@ -146,9 +146,9 @@ export default function NewProject() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4" dir="rtl">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto max-w-lg">
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-2xl p-8">
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-2xl p-6 sm:p-8">
           <h1 className="text-2xl font-bold gradient-text mb-6 text-center">مشروع جديد</h1>
 
           {/* Plan info & limits */}
@@ -193,7 +193,7 @@ export default function NewProject() {
 
             <div>
               <label className="block text-sm font-semibold mb-3">لغة البرمجة</label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3">
                 {languages.map(lang => (
                   <motion.button
                     key={lang.id}

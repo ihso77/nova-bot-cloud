@@ -135,11 +135,11 @@ export default function PaymentSuccess() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-16 px-4 flex items-center justify-center" dir="rtl">
+    <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4 flex items-center justify-center" dir="rtl">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-md glass rounded-2xl p-8 text-center"
+        className="w-full max-w-md glass rounded-2xl p-6 sm:p-8 text-center"
       >
         {status === 'loading' ? (
           <>
