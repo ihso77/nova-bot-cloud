@@ -114,14 +114,14 @@ export default function Dashboard() {
           return (
             <div className="mb-8 space-y-3">
               {subscriptions.map(sub => (
-                <div key={sub.id} className="glass rounded-xl p-4 flex items-center justify-between">
+                <div key={sub.id} className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{sub.plans?.name}</span>
                     {sub.is_free_trial && <Badge className="bg-success/20 text-success">تجريبية</Badge>}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}
+                    <Clock className="w-4 h-4 flex-shrink-0" />
+                    <span>تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}</span>
                   </div>
                 </div>
               ))}

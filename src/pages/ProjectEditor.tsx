@@ -687,32 +687,24 @@ export default function ProjectEditor() {
   return (
     <div className="h-screen pt-16 flex flex-col" dir="rtl">
       {/* Top Toolbar */}
-      <div className="glass border-b border-border/30 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="glass border-b border-border/30 px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="flex items-center gap-3 min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2">
-              <Input value={projectName} onChange={e => setProjectName(e.target.value)} className="h-8 w-48 bg-secondary" onKeyDown={e => e.key === 'Enter' && updateProjectName()} />
+              <Input value={projectName} onChange={e => setProjectName(e.target.value)} className="h-8 w-36 sm:w-48 bg-secondary" onKeyDown={e => e.key === 'Enter' && updateProjectName()} />
               <Button size="sm" variant="ghost" onClick={updateProjectName}><Save className="w-4 h-4" /></Button>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}><X className="w-4 h-4" /></Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-primary" />
-              <h2 className="font-bold">{project.name}</h2>
+            <div className="flex items-center gap-2 min-w-0">
+              <FolderOpen className="w-4 h-4 text-primary flex-shrink-0" />
+              <h2 className="font-bold truncate">{project.name}</h2>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(true)}><Edit3 className="w-3 h-3" /></Button>
             </div>
           )}
-          <Badge variant="secondary" className="gap-1">
-            <Code2 className="w-3 h-3" />
-            {project.language}
-          </Badge>
-          <Badge variant="outline" className={statusBadge.color}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isDeploying ? 'bg-yellow-400 animate-pulse' : project.status === 'running' ? 'bg-green-400' : project.status === 'error' ? 'bg-red-400' : 'bg-gray-400'}`} />
-            {statusBadge.label}
-          </Badge>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {detectedToken ? (
             <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1" title="تم العثور على التوكن في الكود">
               <Shield className="w-3.5 h-3.5" />
@@ -766,8 +758,8 @@ export default function ProjectEditor() {
       </AnimatePresence>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* File Explorer */}
-        <div className="w-56 glass border-l border-border/30 flex flex-col">
+        {/* File Explorer - hidden on mobile, shown on md+ */}
+        <div className="hidden md:flex w-56 glass border-l border-border/30 flex-col">
           <div className="p-3 border-b border-border/30 flex items-center justify-between">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">الملفات</span>
             <div className="flex gap-0.5">

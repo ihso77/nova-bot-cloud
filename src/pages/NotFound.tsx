@@ -17,7 +17,7 @@ const NotFound = () => {
           transition={{ delay: 0.2 }}
           className="mb-8"
         >
-          <h1 className="text-8xl md:text-9xl font-black gradient-text mb-4">404</h1>
+          <h1 className="text-6xl sm:text-7xl md:text-9xl font-black gradient-text mb-4">404</h1>
         </motion.div>
 
         <motion.div
@@ -37,7 +37,7 @@ const NotFound = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex gap-4 justify-center"
+          className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <Link to="/">
             <Button size="lg" className="gradient-bg text-primary-foreground">

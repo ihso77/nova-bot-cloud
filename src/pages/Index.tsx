@@ -58,15 +58,15 @@ export default function Index() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="flex gap-4"
+          className="flex flex-col sm:flex-row gap-4"
         >
           <Link to="/plans">
-            <Button size="lg" className="gradient-bg text-primary-foreground text-lg px-8 glow-primary">
+            <Button size="lg" className="gradient-bg text-primary-foreground text-lg px-8 glow-primary w-full sm:w-auto">
               تصفح الباقات <ArrowLeft className="w-5 h-5 mr-2" />
             </Button>
           </Link>
           <Link to="/register">
-            <Button size="lg" variant="outline" className="text-lg px-8 border-primary/30 hover:bg-primary/10">
+            <Button size="lg" variant="outline" className="text-lg px-8 border-primary/30 hover:bg-primary/10 w-full sm:w-auto">
               ابدأ مجاناً
             </Button>
           </Link>

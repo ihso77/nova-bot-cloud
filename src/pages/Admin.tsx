@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
 import { saveGiftLocal } from '@/components/GiftPopup';
 import {
@@ -16,7 +17,7 @@ import {
   Monitor, Trash2, Eye, Ban, Wrench, Zap, ArrowLeft, Star, Package,
   ToggleLeft, ToggleRight, Send, X, Check, Sparkles, Heart,
   TrendingUp, Layers, Database, ShieldCheck, FileCode2, Ticket, Plus, Percent,
-  Bot, MessageSquare, Hash,
+  Bot, MessageSquare, Hash, Menu,
 } from 'lucide-react';
 
 // --- Admin Navigation ---
@@ -67,6 +68,7 @@ export default function Admin() {
   const { user, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Overview stats
@@ -350,13 +352,32 @@ export default function Admin() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
+  const SidebarNav = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <div className="space-y-0.5">
+      {navItems.map(item => (
+        <button
+          key={item.id}
+          onClick={() => { setActiveTab(item.id); onNavigate?.(); }}
+          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all text-sm ${
+            activeTab === item.id
+              ? 'bg-primary/15 text-primary border-r-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+          }`}
+        >
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          <span>{item.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="h-screen pt-16 flex" dir="rtl">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <motion.aside
         initial={{ x: 300, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className={`glass border-l border-border/30 flex flex-col flex-shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-56' : 'w-16'}`}
+        className={`hidden md:flex glass border-l border-border/30 flex-col flex-shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-56' : 'w-16'}`}
       >
         <div className="p-3 border-b border-border/30 flex items-center justify-between">
           {sidebarOpen && (
@@ -370,21 +391,8 @@ export default function Admin() {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm ${
-                activeTab === item.id
-                  ? 'bg-primary/15 text-primary border-r-2 border-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              }`}
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {sidebarOpen && <span>{item.label}</span>}
-            </button>
-          ))}
+        <div className="flex-1 overflow-y-auto p-2">
+          <SidebarNav />
         </div>
 
         <div className="p-3 border-t border-border/30">
@@ -402,8 +410,42 @@ export default function Admin() {
         </div>
       </motion.aside>
 
+      {/* Mobile Menu Button + Sheet */}
+      <div className="md:hidden absolute top-16 left-0 right-0 z-40">
+        <div className="glass border-b border-border/30 px-4 py-2 flex items-center gap-2">
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Menu className="w-4 h-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-64 p-4">
+              <SheetTitle className="flex items-center gap-2 mb-4">
+                <Shield className="w-4 h-4 text-primary" />
+                <span className="text-sm font-bold text-primary">لوحة الأدمن</span>
+              </SheetTitle>
+              <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
+              <div className="border-t border-border/30 pt-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center flex-shrink-0">
+                    <Shield className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold truncate">المدير</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <span className="text-sm font-medium">
+            {navItems.find(n => n.id === activeTab)?.label || 'الأدمن'}
+          </span>
+        </div>
+      </div>
+
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 md:mt-0 mt-12">
         <AnimatePresence mode="wait">
           {/* Overview */}
           {activeTab === 'overview' && (
@@ -669,17 +711,17 @@ export default function Admin() {
                 <div className="space-y-3">
                   {gifts.map((g, i) => (
                     <motion.div key={g.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
-                      className="glass rounded-xl p-4 flex items-center justify-between">
+                      className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
                           <Gift className="w-5 h-5 text-purple-400" />
                         </div>
-                        <div>
-                          <p className="font-medium">هدية {g.plan_name}</p>
-                          <p className="text-xs text-muted-foreground" dir="ltr">{g.to_email}</p>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">هدية {g.plan_name}</p>
+                          <p className="text-xs text-muted-foreground truncate" dir="ltr">{g.to_email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-xs text-muted-foreground">{formatDate(g.created_at)}</span>
                         <Badge className={g.claimed ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}>
                           {g.claimed ? 'تم الاستلام' : 'بالانتظار'}
@@ -704,7 +746,7 @@ export default function Admin() {
                 {/* Maintenance Mode */}
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
                   className="glass rounded-xl p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
                         <Wrench className="w-5 h-5 text-orange-400" />
@@ -726,7 +768,7 @@ export default function Admin() {
                 {/* Payment */}
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
                   className="glass rounded-xl p-5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
                         <CreditCard className="w-5 h-5 text-green-400" />
