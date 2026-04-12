@@ -866,10 +866,26 @@ export default function Admin() {
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - إرسال إعلان</div>
                     <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - حالة الخدمة</div>
                   </div>
-                  <Button className="w-full gradient-bg text-primary-foreground" onClick={registerCommands} disabled={botLoading}>
-                    {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Zap className="w-4 h-4 ml-2" />}
-                    تسجيل الأوامر في ديسكورد
-                  </Button>
+                  <div className="space-y-2">
+                    <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
+                      setBotLoading(true);
+                      try {
+                        const res = await fetch(`${PROXY}/bot/setup`, { method: 'POST' });
+                        const data = await res.json();
+                        if (data.error) throw new Error(data.error);
+                        toast.success(data.message || 'تم إعداد البوت!');
+                        loadBotInfo();
+                      } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإعداد'); }
+                      setBotLoading(false);
+                    }} disabled={botLoading}>
+                      {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Zap className="w-4 h-4 ml-2" />}
+                      إعداد تلقائي (تسجيل أوامر + رابط Discord)
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={registerCommands} disabled={botLoading}>
+                      <MessageSquare className="w-4 h-4 ml-2" />
+                      تسجيل الأوامر فقط
+                    </Button>
+                  </div>
                 </motion.div>
               </div>
 
