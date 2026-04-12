@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -165,6 +165,7 @@ function parseMaxProjects(features: any): number {
 export default function ProjectEditor() {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
@@ -217,10 +218,15 @@ export default function ProjectEditor() {
   }, [editorContent, selectedFile]);
 
   const loadProject = async () => {
-    const { data } = await supabase.from('projects').select('*').eq('id', id!).single();
+    if (!user || !id) return;
+    const { data } = await supabase.from('projects').select('*').eq('id', id!).eq('user_id', user.id).single();
     if (data) {
       setProject(data);
       setProjectName(data.name);
+    } else {
+      // Project not found or doesn't belong to user
+      toast.error('المشروع غير موجود');
+      navigate('/dashboard');
     }
   };
 
@@ -253,6 +259,7 @@ export default function ProjectEditor() {
   };
 
   const loadFiles = async () => {
+    if (!user || !id) return;
     const { data } = await supabase.from('project_files').select('*').eq('project_id', id!).order('file_name');
     if (data) {
       setFiles(data);

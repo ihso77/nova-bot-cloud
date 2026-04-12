@@ -119,6 +119,11 @@ export default function Auth() {
         setLoading(false);
         return;
       }
+      if (password.length < 8) {
+        toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
         toast.error(error.message);
@@ -203,11 +208,11 @@ export default function Auth() {
             <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.6 }}>
               <Input
                 type="password"
-                placeholder="كلمة المرور"
+                placeholder="كلمة المرور (8 أحرف على الأقل)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 dir="ltr"
                 className="bg-secondary/50 border-border/50 h-11"
               />

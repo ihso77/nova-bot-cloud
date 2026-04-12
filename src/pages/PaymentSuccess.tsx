@@ -19,7 +19,8 @@ export default function PaymentSuccess() {
   }, []);
 
   const activateSubscription = async () => {
-    const userId = searchParams.get('user') || user?.id;
+    // SECURITY: Never trust user ID from URL params - always use authenticated user
+    const userId = user?.id;
     const planId = searchParams.get('plan');
 
     if (!userId || !planId) {
@@ -27,9 +28,6 @@ export default function PaymentSuccess() {
       setErrorMsg('معلومات الدفع غير مكتملة');
       return;
     }
-
-    // Wait briefly for payment to process
-    await new Promise(r => setTimeout(r, 2000));
 
     try {
       // Check if subscription already exists
@@ -46,71 +44,60 @@ export default function PaymentSuccess() {
         return;
       }
 
-      // Check if there's a pending payment for this user+plan
-      const { data: pendingPayment } = await supabase
+      // SECURITY: Find a pending payment for this user+plan and verify it was actually paid
+      const { data: pendingPayments } = await supabase
         .from('payments')
-        .select('id, status')
+        .select('id, provider, status')
         .eq('user_id', userId)
         .eq('plan_id', planId)
         .order('created_at', { ascending: false })
         .limit(1);
 
-      if (pendingPayment && pendingPayment.length > 0) {
-        // Payment record exists - user was redirected from Paymento, means payment was initiated
-        // Create the subscription
-        const { error: subError } = await supabase.from('subscriptions').insert({
-          user_id: userId,
-          plan_id: planId,
-          status: 'active',
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          is_free_trial: false,
-          payment_id: pendingPayment[0].id,
-        });
-
-        if (subError) {
-          // If duplicate, maybe race condition - check again
-          const { data: checkAgain } = await supabase
-            .from('subscriptions')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('plan_id', planId)
-            .eq('status', 'active')
-            .limit(1);
-
-          if (checkAgain && checkAgain.length > 0) {
-            setStatus('active');
-            return;
-          }
-
-          throw subError;
-        }
-
-        // Update payment status
-        await supabase.from('payments').update({
-          status: 'completed',
-          updated_at: new Date().toISOString(),
-        }).eq('id', pendingPayment[0].id);
-
-        setStatus('active');
-        toast.success('تم تفعيل اشتراكك بنجاح!');
+      if (!pendingPayments || pendingPayments.length === 0) {
+        setStatus('error');
+        setErrorMsg('لم يتم العثور على سجل دفع صالح');
         return;
       }
 
-      // No payment record but user was redirected here - create anyway
-      // (Paymento redirected them, so they paid)
+      const payment = pendingPayments[0];
+      
+      // SECURITY: Verify payment with Paymento via proxy
+      if (payment.provider === 'paymento' && payment.id) {
+        try {
+          const verifyRes = await fetch('https://proxy-production-a7b5.up.railway.app/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: payment.id }),
+          });
+          const verifyData = await verifyRes.json();
+          
+          if (!verifyData.paid) {
+            setStatus('error');
+            setErrorMsg('لم يتم اكتمال الدفع بعد. يرجى المحاولة مرة أخرى.');
+            return;
+          }
+        } catch {
+          // If verification fails, still allow if payment record exists and is completed
+          if (payment.status !== 'completed') {
+            setStatus('error');
+            setErrorMsg('فشل التحقق من الدفع');
+            return;
+          }
+        }
+      }
+
+      // Payment verified - create subscription
       const { error: subError } = await supabase.from('subscriptions').insert({
         user_id: userId,
         plan_id: planId,
         status: 'active',
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         is_free_trial: false,
+        payment_id: payment.id,
       });
 
-      if (!subError) {
-        setStatus('active');
-        toast.success('تم تفعيل اشتراكك بنجاح!');
-      } else {
-        // Duplicate check
+      if (subError) {
+        // Handle race condition - check if subscription was created by parallel request
         const { data: checkAgain } = await supabase
           .from('subscriptions')
           .select('id')
@@ -122,15 +109,23 @@ export default function PaymentSuccess() {
         if (checkAgain && checkAgain.length > 0) {
           setStatus('active');
           toast.success('الاشتراك مفعّل بالفعل!');
-        } else {
-          setStatus('error');
-          setErrorMsg('حدث خطأ في تفعيل الاشتراك');
+          return;
         }
+        throw subError;
       }
+
+      // Update payment status
+      await supabase.from('payments').update({
+        status: 'completed',
+        updated_at: new Date().toISOString(),
+      }).eq('id', payment.id);
+
+      setStatus('active');
+      toast.success('تم تفعيل اشتراكك بنجاح!');
     } catch (err: any) {
       console.error('Subscription activation error:', err);
       setStatus('error');
-      setErrorMsg(err.message || 'حدث خطأ في تفعيل الاشتراك');
+      setErrorMsg('حدث خطأ في تفعيل الاشتراك');
     }
   };
 

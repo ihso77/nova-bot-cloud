@@ -1,8 +1,8 @@
 // Cloudflare Worker - Nova VPS Payment Proxy
 // يمنع مشاكل CORS ويخفي مفاتيح API
 
-const PAYMENTO_API_KEY = 'MzFCRUEzMTk0MzVCQzRDMDg2N0ZCREFCMzQ5OTc4QzI=';
-const PAYMENTO_SECRET_KEY = 'MzE1NERFQjM3MzcyQUREMkEwOEI2ODJGODc4RjFFQzY=';
+const PAYMENTO_API_KEY = 'MzFCRUEzMTk0MzVCQzRDMDg2N0ZCREFCMzQ5OTc4QzI='; // TODO: Move to Wrangler secret
+const PAYMENTO_SECRET_KEY = 'MzE1NERFQjM3MzcyQUREMkEwOEI2ODJGODc4RjFFQzY='; // TODO: Move to Wrangler secret
 
 export default {
   async fetch(request) {
