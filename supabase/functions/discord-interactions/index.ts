@@ -311,7 +311,3 @@ serve(async (req) => {
     return ephemeral('❌ حدث خطأ في معالجة الأمر');
   }
 });
-
-function ephemeral(content: string) {
-  return new Response(JSON.stringify({ type: 4, data: { content, flags: 64 } }), { headers: { 'Content-Type': 'application/json' } });
-}
