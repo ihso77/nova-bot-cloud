@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -53,6 +80,30 @@ export type Database = {
         }
         Relationships: []
       }
+      discord_links: {
+        Row: {
+          discord_user_id: string
+          discord_username: string | null
+          id: string
+          linked_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          discord_user_id: string
+          discord_username?: string | null
+          id?: string
+          linked_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          discord_user_id?: string
+          discord_username?: string | null
+          id?: string
+          linked_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       gifts: {
         Row: {
           claimed: boolean
@@ -89,6 +140,36 @@ export type Database = {
           plan_id?: string
           plan_name?: string
           to_email?: string
+        }
+        Relationships: []
+      }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          discord_notifications: boolean | null
+          email_notifications: boolean | null
+          id: string
+          maintenance_alerts: boolean | null
+          payment_alerts: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discord_notifications?: boolean | null
+          email_notifications?: boolean | null
+          id?: string
+          maintenance_alerts?: boolean | null
+          payment_alerts?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discord_notifications?: boolean | null
+          email_notifications?: boolean | null
+          id?: string
+          maintenance_alerts?: boolean | null
+          payment_alerts?: boolean | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -317,6 +398,36 @@ export type Database = {
         }
         Relationships: []
       }
+      site_status_logs: {
+        Row: {
+          checked_at: string | null
+          error_message: string | null
+          id: string
+          latency_ms: number | null
+          service_name: string
+          status: string
+          status_code: number | null
+        }
+        Insert: {
+          checked_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          service_name: string
+          status: string
+          status_code?: number | null
+        }
+        Update: {
+          checked_at?: string | null
+          error_message?: string | null
+          id?: string
+          latency_ms?: number | null
+          service_name?: string
+          status?: string
+          status_code?: number | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -360,6 +471,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_tickets: {
+        Row: {
+          admin_reply: string | null
+          created_at: string | null
+          discord_user_id: string | null
+          id: string
+          message: string
+          priority: string | null
+          status: string | null
+          subject: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_reply?: string | null
+          created_at?: string | null
+          discord_user_id?: string | null
+          id?: string
+          message: string
+          priority?: string | null
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_reply?: string | null
+          created_at?: string | null
+          discord_user_id?: string | null
+          id?: string
+          message?: string
+          priority?: string | null
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
