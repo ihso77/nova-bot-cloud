@@ -250,6 +250,8 @@ export default function DiscordUsernameChecker() {
     if (isRunning) return;
 
     const now = Date.now();
+    isRunningRef.current = true;
+    errorCountRef.current = 0;
     setIsRunning(true);
     setStartedAt(now);
     setElapsedTime(0);
@@ -260,6 +262,7 @@ export default function DiscordUsernameChecker() {
 
   const stopChecking = () => {
     setIsRunning(false);
+    isRunningRef.current = false;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
