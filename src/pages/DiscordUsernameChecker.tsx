@@ -362,6 +362,7 @@ export default function DiscordUsernameChecker() {
                         return;
                       }
                       setLength(len);
+                      lengthRef.current = len;
                     }}
                     className={length === len ? 'gradient-bg text-primary-foreground min-w-[50px]' : 'min-w-[50px]'}
                   >
