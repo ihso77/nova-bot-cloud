@@ -25,6 +25,14 @@ import {
 
 const PROXY_URL = 'https://proxy-production-a7b5.up.railway.app';
 
+const getAuthHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${session?.access_token || ''}`,
+  };
+};
+
 interface ProjectFile {
   id: string;
   file_name: string;
@@ -192,6 +200,7 @@ export default function ProjectEditor() {
   const terminalPanelRef = useRef<any>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const dragStartY = useRef(0);
   const dragStartH = useRef(0);
   const logIdRef = useRef(0);
@@ -413,7 +422,7 @@ export default function ProjectEditor() {
 
       const proxyRes = await fetch(`${PROXY_URL}/deploy`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           botName: project.name,
           botToken,
@@ -471,7 +480,7 @@ export default function ProjectEditor() {
       if (project.railway_service_id) {
         const proxyRes = await fetch(`${PROXY_URL}/stop`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: await getAuthHeaders(),
           body: JSON.stringify({ serviceId: project.railway_service_id }),
           signal: AbortSignal.timeout(15000),
         });
@@ -728,6 +737,14 @@ export default function ProjectEditor() {
 
           <Separator orientation="vertical" className="h-6 mx-0.5 sm:mx-1" />
 
+          {/* Mobile Files Button */}
+          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => setShowMobileFiles(true)} title="الملفات">
+            <FolderOpen className="w-4 h-4" />
+          </Button>
+          {/* Mobile Import Button */}
+          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => mobileFileInputRef.current?.click()} title="استيراد ملف">
+            <Upload className="w-4 h-4" />
+          </Button>
           <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
             <TerminalIcon className="w-4 h-4" />
           </Button>
@@ -1026,19 +1043,19 @@ export default function ProjectEditor() {
 
       {/* Mobile Files Sheet - visible on mobile only */}
       <Sheet open={showMobileFiles} onOpenChange={setShowMobileFiles}>
-        <SheetContent side="right" className="w-80 p-0" dir="rtl">
-          <SheetHeader className="px-4 pt-4 pb-2 border-b border-border/30">
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl p-0" dir="rtl">
+          <SheetHeader className="px-4 pt-3 pb-2 border-b border-border/30">
             <SheetTitle className="text-right flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-primary" />
-                <span>الملفات</span>
+                <span className="text-sm font-bold">الملفات</span>
               </div>
               <div className="flex gap-1">
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => setShowNewFile(true)} title="ملف جديد">
-                  <Plus className="w-4 h-4" />
+                <Button size="sm" variant="outline" className="h-8 px-3 gap-1" onClick={() => setShowNewFile(true)}>
+                  <Plus className="w-4 h-4" /> <span className="text-xs">ملف جديد</span>
                 </Button>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => fileInputRef.current?.click()} title="استيراد ملف">
-                  <Upload className="w-4 h-4" />
+                <Button size="sm" variant="outline" className="h-8 px-3 gap-1" onClick={() => mobileFileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4" /> <span className="text-xs">استيراد</span>
                 </Button>
               </div>
             </SheetTitle>
@@ -1061,17 +1078,18 @@ export default function ProjectEditor() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+          <div className="flex-1 overflow-y-auto p-2">
             {files.length === 0 ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                <FileCode2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                لا توجد ملفات
+              <div className="p-8 text-center">
+                <FileCode2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm text-muted-foreground">لا توجد ملفات</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">استورد ملف أو أنشئ ملف جديد</p>
               </div>
             ) : (
               files.map(file => (
                 <div
                   key={file.id}
-                  className={`flex items-center justify-between px-3 py-3 rounded-lg cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-colors mb-1 ${
                     selectedFile?.id === file.id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-secondary/50'
                   }`}
                   onClick={() => {
@@ -1115,11 +1133,11 @@ export default function ProjectEditor() {
             })()}
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{files.length} ملف</span>
-              {hasUnsaved && <span className="text-yellow-400">● غير محفوظ</span>}
+              {hasUnsaved && <span className="text-yellow-400">غير محفوظ</span>}
             </div>
           </div>
 
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => { handleFileImport(e); setShowMobileFiles(false); }} />
+          <input ref={mobileFileInputRef} type="file" multiple className="hidden" onChange={(e) => { handleFileImport(e); setShowMobileFiles(false); }} />
         </SheetContent>
       </Sheet>
 
