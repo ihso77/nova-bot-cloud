@@ -88,6 +88,7 @@ function formatTime(ms: number): string {
 
 export default function DiscordUsernameChecker() {
   const [isRunning, setIsRunning] = useState(false);
+  const isRunningRef = useRef(false);
   const [length, setLength] = useState(4);
   const [available, setAvailable] = useState<string[]>([]);
   const [unavailable, setUnavailable] = useState<string[]>([]);
@@ -97,11 +98,13 @@ export default function DiscordUsernameChecker() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [currentUsername, setCurrentUsername] = useState<string>('');
   const [errorCount, setErrorCount] = useState(0);
+  const errorCountRef = useRef(0);
   const [activeTab, setActiveTab] = useState('available');
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const logScrollRef = useRef<HTMLDivElement>(null);
+  const lengthRef = useRef(4);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -180,18 +183,19 @@ export default function DiscordUsernameChecker() {
     setLogs(prev => [...prev, `[${time}] ${message}`]);
   }, []);
 
-  // Main checking logic
+  // Main checking logic - use refs to avoid dependency issues
   const checkUsername = useCallback(async () => {
-    if (!isRunning) return;
+    if (!isRunningRef.current) return;
 
-    const username = generateUsername(length);
+    const username = generateUsername(lengthRef.current);
     setCurrentUsername(username);
 
     try {
       const res = await fetch(`${PROXY_URL}/discord-check?username=${encodeURIComponent(username)}`);
 
       if (!res.ok) {
-        setErrorCount(prev => prev + 1);
+        errorCountRef.current += 1;
+        setErrorCount(errorCountRef.current);
         addLog(`خطأ في الاتصال: ${username}`);
         return;
       }
@@ -205,38 +209,40 @@ export default function DiscordUsernameChecker() {
       } else {
         setUnavailable(prev => {
           const newList = [username, ...prev];
-          return newList.slice(0, 500); // Keep last 500 unavailable
+          return newList.slice(0, 500);
         });
         addLog(`❌ ${username} - غير متاح`);
       }
 
       setTotalChecked(prev => prev + 1);
+      errorCountRef.current = 0;
       setErrorCount(0);
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'خطأ غير معروف';
-      setErrorCount(prev => prev + 1);
+      errorCountRef.current += 1;
+      setErrorCount(errorCountRef.current);
       addLog(`فشل الاتصال: ${msg}`);
 
-      // Stop after 5 consecutive errors
-      if (errorCount >= 4) {
+      if (errorCountRef.current >= 5) {
         stopChecking();
         addLog('تم الإيقاف بسبب أخطاء متتالية في الاتصال');
         toast.error('تم الإيقاف بسبب مشاكل في الاتصال');
       }
     }
-  }, [isRunning, length, errorCount, addLog]);
+  }, [addLog]);
 
-  // Auto-check interval
+  // Auto-check interval - only depends on isRunning, not checkUsername
   useEffect(() => {
     if (isRunning) {
-      // Run immediately, then every 3 seconds
+      isRunningRef.current = true;
       checkUsername();
       intervalRef.current = setInterval(checkUsername, CHECK_INTERVAL);
-
       return () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
+    } else {
+      isRunningRef.current = false;
     }
   }, [isRunning, checkUsername]);
 
@@ -244,6 +250,8 @@ export default function DiscordUsernameChecker() {
     if (isRunning) return;
 
     const now = Date.now();
+    isRunningRef.current = true;
+    errorCountRef.current = 0;
     setIsRunning(true);
     setStartedAt(now);
     setElapsedTime(0);
@@ -254,6 +262,7 @@ export default function DiscordUsernameChecker() {
 
   const stopChecking = () => {
     setIsRunning(false);
+    isRunningRef.current = false;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -353,6 +362,7 @@ export default function DiscordUsernameChecker() {
                         return;
                       }
                       setLength(len);
+                      lengthRef.current = len;
                     }}
                     className={length === len ? 'gradient-bg text-primary-foreground min-w-[50px]' : 'min-w-[50px]'}
                   >
