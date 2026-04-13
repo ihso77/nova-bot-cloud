@@ -238,7 +238,7 @@ export default function Admin() {
   const loadNotifications = useCallback(async () => {
     setNotificationsLoading(true);
     try {
-      const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+      const { data } = await (supabase as any).from('notifications').select('*').order('created_at', { ascending: false });
       if (data) setNotifications(data);
     } catch {}
     setNotificationsLoading(false);
@@ -247,7 +247,7 @@ export default function Admin() {
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
     try {
-      const { data } = await supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100);
+      const { data } = await (supabase as any).from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100);
       if (data) setLogs(data);
     } catch {}
     setLogsLoading(false);
@@ -1312,7 +1312,7 @@ export default function Admin() {
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
                       if (!notifMessage.trim()) { toast.error('أدخل نص الإعلان'); return; }
                       try {
-                        await supabase.from('notifications').insert({
+                        await (supabase as any).from('notifications').insert({
                           message: notifMessage.trim(),
                           type: notifType,
                           active: true,
@@ -1351,7 +1351,7 @@ export default function Admin() {
                           {n.type === 'success' ? 'نجاح' : n.type === 'warning' ? 'تحذير' : 'معلومة'}
                         </Badge>
                         <Switch checked={n.active} onCheckedChange={async () => {
-                          await supabase.from('notifications').update({ active: !n.active }).eq('id', n.id);
+                          await (supabase as any).from('notifications').update({ active: !n.active }).eq('id', n.id);
                           loadNotifications();
                         }} />
                       </div>
