@@ -309,9 +309,9 @@ export default function ProjectEditor() {
   }, []);
 
   const pollDeployStatus = useCallback(async (serviceId: string) => {
-    const maxAttempts = 45; // 45 × 8s = 6 minutes max
+    const maxAttempts = 60; // 60 × 8s = 8 minutes max
     let lastStatus = '';
-    let unknownCount = 0;
+    let initCount = 0;
 
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(r => setTimeout(r, 8000));
@@ -319,8 +319,13 @@ export default function ProjectEditor() {
 
       try {
         const res = await fetch(`${PROXY_URL}/status?serviceId=${serviceId}`);
-        if (!res.ok) continue; // silent retry on non-200
+        if (!res.ok) continue;
         const data = await res.json();
+
+        if (data.status === 'DELETED') {
+          addLog('error', 'السيرفيس تم حذفه من Railway');
+          return 'CRASHED';
+        }
 
         if (data.status === 'SUCCESS') {
           setDeployProgress(100);
@@ -347,22 +352,25 @@ export default function ProjectEditor() {
         }
 
         if (data.status === 'BUILDING' || data.status === 'DEPLOYING') {
-          const newStatus = i < 4 ? 'جاري بناء الصورة...' : i < 10 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...';
+          const newStatus = i < 5 ? 'جاري بناء الصورة...' : i < 15 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...';
           if (newStatus !== lastStatus) {
             setDeployStatus(newStatus);
+            addLog('info', newStatus);
             lastStatus = newStatus;
           }
-          unknownCount = 0;
-        } else if (data.status === 'unknown') {
-          unknownCount++;
-          // Only log once per 5 unknown responses
-          if (unknownCount === 1) {
-            addLog('info', 'جاري انتظار استجابة Railway...');
-          }
-          if (unknownCount <= 5) {
-            setDeployStatus('جاري بناء البوت...');
-          } else {
-            setDeployStatus('النشر يستغرق وقتاً، يرجى الانتظار...');
+          initCount = 0;
+        } else if (data.status === 'INITIALIZING' || data.status === 'unknown') {
+          initCount++;
+          if (initCount === 1) {
+            addLog('info', 'جاري إنشاء البيئة على Railway...');
+            setDeployStatus('جاري التحضير...');
+          } else if (initCount === 5) {
+            setDeployStatus('جاري بناء الصورة...');
+            addLog('info', 'Railway يستغرق وقتاً في البناء، يرجى الانتظار...');
+          } else if (initCount === 15) {
+            setDeployStatus('النشر يستغرق وقتاً أطول من المعتاد...');
+          } else if (initCount > 30) {
+            addLog('warning', 'النشر يستغرق وقتاً طويلاً جداً - قد يكون هناك مشكلة في Railway');
           }
         }
       } catch {
