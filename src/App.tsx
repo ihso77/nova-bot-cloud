@@ -17,6 +17,7 @@ import Admin from "./pages/Admin";
 import DiscordUsernameChecker from "./pages/DiscordUsernameChecker";
 import Tools from "./pages/Tools";
 import NitroGenerator from "./pages/NitroGenerator";
+import DiscordTimestamp from "./pages/DiscordTimestamp";
 import NotFound from "./pages/NotFound";
 import GiftPopup from "./components/GiftPopup";
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/discord-username-checker" element={<DiscordUsernameChecker />} />
             <Route path="/tools/nitro-generator" element={<NitroGenerator />} />
+            <Route path="/tools/discord-timestamp" element={<DiscordTimestamp />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GiftPopup />
