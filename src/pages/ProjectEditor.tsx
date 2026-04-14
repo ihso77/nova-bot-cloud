@@ -309,13 +309,17 @@ export default function ProjectEditor() {
   }, []);
 
   const pollDeployStatus = useCallback(async (serviceId: string) => {
-    const maxAttempts = 30;
+    const maxAttempts = 45; // 45 × 8s = 6 minutes max
+    let lastStatus = '';
+    let unknownCount = 0;
+
     for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 5000));
-      setDeployProgress(Math.min(90, ((i + 1) / maxAttempts) * 100));
+      await new Promise(r => setTimeout(r, 8000));
+      setDeployProgress(Math.min(95, 30 + ((i + 1) / maxAttempts) * 65));
 
       try {
         const res = await fetch(`${PROXY_URL}/status?serviceId=${serviceId}`);
+        if (!res.ok) continue; // silent retry on non-200
         const data = await res.json();
 
         if (data.status === 'SUCCESS') {
@@ -343,10 +347,26 @@ export default function ProjectEditor() {
         }
 
         if (data.status === 'BUILDING' || data.status === 'DEPLOYING') {
-          setDeployStatus(i < 3 ? 'جاري بناء الصورة...' : i < 6 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...');
+          const newStatus = i < 4 ? 'جاري بناء الصورة...' : i < 10 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...';
+          if (newStatus !== lastStatus) {
+            setDeployStatus(newStatus);
+            lastStatus = newStatus;
+          }
+          unknownCount = 0;
+        } else if (data.status === 'unknown') {
+          unknownCount++;
+          // Only log once per 5 unknown responses
+          if (unknownCount === 1) {
+            addLog('info', 'جاري انتظار استجابة Railway...');
+          }
+          if (unknownCount <= 5) {
+            setDeployStatus('جاري بناء البوت...');
+          } else {
+            setDeployStatus('النشر يستغرق وقتاً، يرجى الانتظار...');
+          }
         }
       } catch {
-        // network error - continue polling
+        // network error - silent retry
       }
     }
     addLog('warning', 'استغرقت العملية وقتاً طويلاً، تحقق من حالة البوت لاحقاً');
