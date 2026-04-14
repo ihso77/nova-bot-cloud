@@ -17,6 +17,7 @@ import Admin from "./pages/Admin";
 import DiscordUsernameChecker from "./pages/DiscordUsernameChecker";
 import Tools from "./pages/Tools";
 import NitroGenerator from "./pages/NitroGenerator";
+import DiscordTimestamp from "./pages/DiscordTimestamp";
 import NotFound from "./pages/NotFound";
 import GiftPopup from "./components/GiftPopup";
 

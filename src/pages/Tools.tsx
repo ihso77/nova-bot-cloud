@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowLeft, Wrench, Zap } from 'lucide-react';
+import { Search, ArrowLeft, Wrench, Zap, Clock } from 'lucide-react';
 
 const tools = [
   {
@@ -21,7 +21,24 @@ const tools = [
     tag: 'مجاني',
     tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
   },
+  {
+    name: 'مولد طوابع الوقت',
+    description: 'أنشئ طوابع وقت ديسكورد الديناميكية بجميع الصيغ. تظهر بتوقيت كل مستخدم تلقائياً عند لصقها.',
+    icon: Clock,
+    route: '/tools/discord-timestamp',
+    tag: 'مجاني',
+    tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
+  },
 ];
+
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.12 } },
+};
+const item = {
+  hidden: { y: 40, opacity: 0 },
+  show: { y: 0, opacity: 1 },
+};
 
 export default function Tools() {
   return (
@@ -38,7 +55,7 @@ export default function Tools() {
             transition={{ duration: 0.6, type: 'spring' }}
             className="mb-5"
           >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl gradient-bg flex items-center justify-center mx-auto glow-primary">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl gradient-bg flex items-center justify-center mx-auto glow-primary floating">
               <Wrench className="w-8 h-8 sm:w-10 sm:h-10 text-primary-foreground" />
             </div>
           </motion.div>
@@ -50,20 +67,23 @@ export default function Tools() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          {tools.map((tool, i) => (
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+        >
+          {tools.map((tool) => (
             <motion.div
               key={tool.name}
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: i * 0.15 }}
+              variants={item}
               whileHover={{ y: -6, scale: 1.02 }}
-              className="glass rounded-2xl p-5 sm:p-7 relative group cursor-pointer"
+              className="glass rounded-2xl p-5 sm:p-7 relative group cursor-pointer hover:border-primary/30 transition-all duration-300"
             >
               <div className="absolute top-4 left-4">
                 <Badge className={`${tool.tagColor} text-xs`}>{tool.tag}</Badge>
               </div>
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl gradient-bg flex items-center justify-center mb-4 sm:mb-5">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl gradient-bg flex items-center justify-center mb-4 sm:mb-5 group-hover:glow-primary transition-all duration-300">
                 <tool.icon className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
               </div>
               <h3 className="text-lg sm:text-xl font-bold mb-2">{tool.name}</h3>
@@ -76,7 +96,7 @@ export default function Tools() {
               </Link>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <motion.div
           initial={{ y: 30, opacity: 0 }}
