@@ -45,6 +45,7 @@ const App = () => (
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/discord-username-checker" element={<DiscordUsernameChecker />} />
             <Route path="/tools/nitro-generator" element={<NitroGenerator />} />
+            <Route path="/tools/discord-timestamp" element={<DiscordTimestamp />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GiftPopup />
