@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const PROXY_URL = 'https://proxy-production-a7b5.up.railway.app';
-const CHECK_INTERVAL = 3000; // 3 seconds
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://mmvdflwchecvzxzsumlm.supabase.co';
+const CHECK_INTERVAL = 2000; // 2 seconds
 const MAX_SESSION_HOURS = 12;
 const STORAGE_KEY = 'nova_discord_checker';
 
@@ -191,7 +191,7 @@ export default function DiscordUsernameChecker() {
     setCurrentUsername(username);
 
     try {
-      const res = await fetch(`${PROXY_URL}/discord-check?username=${encodeURIComponent(username)}`);
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/discord-check?username=${encodeURIComponent(username)}`);
 
       if (!res.ok) {
         errorCountRef.current += 1;
