@@ -50,7 +50,7 @@ async function discordRequest(endpoint: string, options: RequestInit, botToken: 
   return res.json();
 }
 
-async function getPlansEmbed(supabaseClient: ReturnType<typeof createClient>) {
+async function getPlansEmbed(supabaseClient: any) {
   const { data: plans } = await supabaseClient.from('plans').select('*').eq('is_active', true).order('sort_order');
   const fields = (plans || []).map((p: any) => ({
     name: `${p.is_free ? '🎁' : '⭐'} ${p.name}`,
