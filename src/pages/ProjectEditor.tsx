@@ -468,6 +468,12 @@ export default function ProjectEditor() {
 
         if (proxyData.code === 'QUOTA_EXCEEDED') {
           toast.error('تم تجاوز حد الموارد المجانية في Railway - احذف بوتات غير مستخدمة', { duration: 8000 });
+        } else if (proxyData.code === 'INVALID_TOKEN') {
+          toast.error('توكن Discord غير صالح - تأكد من نسخ التوكن الصحيح من Discord Developer Portal', { duration: 8000 });
+        } else if (proxyRes.status === 401) {
+          toast.error('جلسة منتهية - سجل دخول مجدداً', { duration: 5000 });
+        } else {
+          toast.error('فشل النشر: ' + errMsg.substring(0, 100), { duration: 6000 });
         }
 
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
