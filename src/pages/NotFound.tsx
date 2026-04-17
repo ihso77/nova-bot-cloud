@@ -2,8 +2,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Server, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 const NotFound = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" dir="rtl">
       <motion.div
@@ -26,10 +29,10 @@ const NotFound = () => {
           transition={{ delay: 0.3 }}
         >
           <p className="text-xl md:text-2xl text-muted-foreground mb-2">
-            عذراً، الصفحة غير موجودة
+            {t('notFound.title')}
           </p>
           <p className="text-muted-foreground mb-8">
-            يبدو أنك ضللت الطريق. دعنا نعيدك إلى المكان الصحيح.
+            {t('notFound.description')}
           </p>
         </motion.div>
 
@@ -42,12 +45,12 @@ const NotFound = () => {
           <Link to="/">
             <Button size="lg" className="gradient-bg text-primary-foreground">
               <Home className="w-5 h-5 ml-2" />
-              الصفحة الرئيسية
+              {t('notFound.home')}
             </Button>
           </Link>
           <Link to="/dashboard">
             <Button size="lg" variant="outline">
-              لوحة التحكم
+              {t('notFound.dashboard')}
             </Button>
           </Link>
         </motion.div>

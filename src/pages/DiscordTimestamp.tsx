@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -7,17 +8,19 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, Copy, Check, CalendarDays, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-const FORMATS = [
-  { key: 't', label: 'وقت قصير', example: '09:30 PM' },
-  { key: 'T', label: 'وقت طويل', example: '09:30:00 PM' },
-  { key: 'd', label: 'تاريخ قصير', example: '14/04/2026' },
-  { key: 'D', label: 'تاريخ طويل', example: 'April 14, 2026' },
-  { key: 'f', label: 'تاريخ ووقت', example: 'April 14, 2026 09:30 PM' },
-  { key: 'F', label: 'تاريخ ووقت كامل', example: 'Tuesday, April 14, 2026 09:30 PM' },
-  { key: 'R', label: 'نسبي', example: 'منذ 5 دقائق' },
-];
-
 export default function DiscordTimestamp() {
+  const { t } = useTranslation();
+
+  const FORMATS = [
+    { key: 't', label: t('timestamp.shortTime'), example: '09:30 PM' },
+    { key: 'T', label: t('timestamp.longTime'), example: '09:30:00 PM' },
+    { key: 'd', label: t('timestamp.shortDate'), example: '14/04/2026' },
+    { key: 'D', label: t('timestamp.longDate'), example: 'April 14, 2026' },
+    { key: 'f', label: t('timestamp.dateTime'), example: 'April 14, 2026 09:30 PM' },
+    { key: 'F', label: t('timestamp.fullDateTime'), example: 'Tuesday, April 14, 2026 09:30 PM' },
+    { key: 'R', label: t('timestamp.relative'), example: '5 minutes ago' },
+  ];
+
   const [date, setDate] = useState(() => {
     const now = new Date();
     const offset = now.getTimezoneOffset();
@@ -35,7 +38,7 @@ export default function DiscordTimestamp() {
     const code = `<t:${unix}:${key}>`;
     navigator.clipboard.writeText(code);
     setCopiedKey(key);
-    toast.success('تم النسخ!');
+    toast.success(t('timestamp.copied'));
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
@@ -52,10 +55,10 @@ export default function DiscordTimestamp() {
 
     if (key === 'R') {
       const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-      if (Math.abs(diff) < 60) return `منذ ${Math.abs(diff)} ثانية`;
-      if (Math.abs(diff) < 3600) return `منذ ${Math.floor(Math.abs(diff) / 60)} دقيقة`;
-      if (Math.abs(diff) < 86400) return `منذ ${Math.floor(Math.abs(diff) / 3600)} ساعة`;
-      return `منذ ${Math.floor(Math.abs(diff) / 86400)} يوم`;
+      if (Math.abs(diff) < 60) return t('timestamp.secondsAgo', { count: Math.abs(diff) });
+      if (Math.abs(diff) < 3600) return t('timestamp.minutesAgo', { count: Math.floor(Math.abs(diff) / 60) });
+      if (Math.abs(diff) < 86400) return t('timestamp.hoursAgo', { count: Math.floor(Math.abs(diff) / 3600) });
+      return t('timestamp.daysAgo', { count: Math.floor(Math.abs(diff) / 86400) });
     }
 
     return d.toLocaleString('en-US', opts[key]);
@@ -96,10 +99,10 @@ export default function DiscordTimestamp() {
             </div>
           </motion.div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3">
-            <span className="gradient-text">مولد طوابع الوقت</span>
+            <span className="gradient-text">{t('timestamp.title')}</span>
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg max-w-lg mx-auto">
-            أنشئ طوابع وقت ديسكورد الديناميكية - تظهر بتوقيت كل مستخدم تلقائياً
+            {t('timestamp.subtitle')}
           </p>
         </motion.div>
 
@@ -112,7 +115,7 @@ export default function DiscordTimestamp() {
           <Card className="glass p-4 sm:p-6 mb-4 sm:mb-6">
             <div className="flex items-center gap-2 mb-4">
               <CalendarDays className="w-5 h-5 text-primary" />
-              <h2 className="font-bold text-lg">اختر التاريخ والوقت</h2>
+              <h2 className="font-bold text-lg">{t('timestamp.chooseDateTime')}</h2>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
@@ -123,7 +126,7 @@ export default function DiscordTimestamp() {
                 className="flex-1 font-mono text-base"
               />
               <Button onClick={setNow} variant="outline" className="gap-2">
-                <Clock className="w-4 h-4" /> الآن
+                <Clock className="w-4 h-4" /> {t('timestamp.now')}
               </Button>
             </div>
 
@@ -136,7 +139,7 @@ export default function DiscordTimestamp() {
                   onClick={() => addMinutes(m)}
                   className="text-xs"
                 >
-                  +{m >= 60 ? `${m / 60} ساعة` : `${m} دقيقة`}
+                  {m >= 60 ? t('timestamp.addHour', { count: m / 60 }) : t('timestamp.addMinute', { count: m })}
                 </Button>
               ))}
             </div>
@@ -152,7 +155,7 @@ export default function DiscordTimestamp() {
                   className="h-7 px-2 mr-auto"
                   onClick={() => {
                     navigator.clipboard.writeText(String(unix));
-                    toast.success('تم النسخ!');
+                    toast.success(t('timestamp.copied'));
                   }}
                 >
                   <Copy className="w-3 h-3" />
@@ -228,12 +231,12 @@ export default function DiscordTimestamp() {
           className="mt-6 sm:mt-8"
         >
           <Card className="glass p-4 sm:p-6">
-            <h3 className="font-bold text-lg mb-3 gradient-text">كيف تستخدم؟</h3>
+            <h3 className="font-bold text-lg mb-3 gradient-text">{t('timestamp.howToUse')}</h3>
             <div className="space-y-3 text-sm text-muted-foreground">
-              <p>1. اختر التاريخ والوقت المطلوب</p>
-              <p>2. اضغط على الصيغة المناسبة لنسخ الكود</p>
-              <p>3. الصق الكود في رسالة ديسكورد</p>
-              <p>4. سيظهر الوقت ديناميكياً بتوقيت كل مستخدم!</p>
+              <p>{t('timestamp.step1')}</p>
+              <p>{t('timestamp.step2')}</p>
+              <p>{t('timestamp.step3')}</p>
+              <p>{t('timestamp.step4')}</p>
             </div>
           </Card>
         </motion.div>

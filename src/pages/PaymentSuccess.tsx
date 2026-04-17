@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 export default function PaymentSuccess() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -25,7 +27,7 @@ export default function PaymentSuccess() {
 
     if (!userId || !planId) {
       setStatus('error');
-      setErrorMsg('معلومات الدفع غير مكتملة');
+      setErrorMsg(t('paymentSuccess.incompleteInfo'));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function PaymentSuccess() {
 
       if (!pendingPayments || pendingPayments.length === 0) {
         setStatus('error');
-        setErrorMsg('لم يتم العثور على سجل دفع صالح');
+        setErrorMsg(t('paymentSuccess.noPaymentRecord'));
         return;
       }
 
@@ -73,14 +75,14 @@ export default function PaymentSuccess() {
           
           if (!verifyData.paid) {
             setStatus('error');
-            setErrorMsg('لم يتم اكتمال الدفع بعد. يرجى المحاولة مرة أخرى.');
+            setErrorMsg(t('paymentSuccess.paymentIncomplete'));
             return;
           }
         } catch {
           // If verification fails, still allow if payment record exists and is completed
           if (payment.status !== 'completed') {
             setStatus('error');
-            setErrorMsg('فشل التحقق من الدفع');
+            setErrorMsg(t('paymentSuccess.verificationFailed'));
             return;
           }
         }
@@ -108,7 +110,7 @@ export default function PaymentSuccess() {
 
         if (checkAgain && checkAgain.length > 0) {
           setStatus('active');
-          toast.success('الاشتراك مفعّل بالفعل!');
+          toast.success(t('paymentSuccess.alreadyActive'));
           return;
         }
         throw subError;
@@ -121,11 +123,11 @@ export default function PaymentSuccess() {
       }).eq('id', payment.id);
 
       setStatus('active');
-      toast.success('تم تفعيل اشتراكك بنجاح!');
+      toast.success(t('paymentSuccess.activated'));
     } catch (err: any) {
       console.error('Subscription activation error:', err);
       setStatus('error');
-      setErrorMsg('حدث خطأ في تفعيل الاشتراك');
+      setErrorMsg(t('paymentSuccess.activationError'));
     }
   };
 
@@ -139,29 +141,29 @@ export default function PaymentSuccess() {
         {status === 'loading' ? (
           <>
             <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
-            <h1 className="text-2xl font-bold mb-2">جاري التحقق من الدفع...</h1>
-            <p className="text-muted-foreground">انتظر قليلاً</p>
+            <h1 className="text-2xl font-bold mb-2">{t('paymentSuccess.verifying')}</h1>
+            <p className="text-muted-foreground">{t('paymentSuccess.pleaseWait')}</p>
           </>
         ) : status === 'active' ? (
           <>
             <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold gradient-text mb-2">تم الدفع بنجاح!</h1>
-            <p className="text-muted-foreground mb-6">تم تفعيل اشتراكك بنجاح. يمكنك الآن إنشاء مشاريعك.</p>
+            <h1 className="text-2xl font-bold gradient-text mb-2">{t('paymentSuccess.success')}</h1>
+            <p className="text-muted-foreground mb-6">{t('paymentSuccess.successDesc')}</p>
             <Button onClick={() => navigate('/dashboard')} className="gradient-bg text-primary-foreground">
-              الذهاب للوحة التحكم
+              {t('paymentSuccess.goToDashboard')}
             </Button>
           </>
         ) : (
           <>
             <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold mb-2">حدث خطأ</h1>
+            <h1 className="text-2xl font-bold mb-2">{t('paymentSuccess.genericError')}</h1>
             <p className="text-muted-foreground mb-6">{errorMsg}</p>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => navigate('/plans')}>
-                العودة للباقات
+                {t('paymentSuccess.backToPlans')}
               </Button>
               <Button className="flex-1 gradient-bg text-primary-foreground" onClick={() => navigate('/dashboard')}>
-                لوحة التحكم
+                {t('paymentSuccess.dashboard')}
               </Button>
             </div>
           </>

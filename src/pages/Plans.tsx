@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, Star, Cpu, HardDrive, MemoryStick } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface Plan {
   id: string;
@@ -26,6 +27,7 @@ export default function Plans() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     loadPlans();
@@ -50,7 +52,7 @@ export default function Plans() {
         .limit(1);
 
       if (existing && existing.length > 0) {
-        toast.error('لقد استخدمت الباقة المجانية من قبل');
+        toast.error(t('plans.alreadyUsedFree'));
         return;
       }
 
@@ -64,9 +66,9 @@ export default function Plans() {
       });
 
       if (error) {
-        toast.error('حدث خطأ');
+        toast.error(t('plans.error'));
       } else {
-        toast.success('تم تفعيل الباقة المجانية لمدة شهر!');
+        toast.success(t('plans.freeActivated'));
         navigate('/dashboard/new-project');
       }
     } else {
@@ -82,9 +84,9 @@ export default function Plans() {
       <div className="container mx-auto">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-center mb-10 sm:mb-16">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4">
-            <span className="gradient-text">اختر باقتك</span>
+            <span className="gradient-text">{t('plans.title')}</span>
           </h1>
-          <p className="text-muted-foreground text-sm sm:text-lg">باقات تناسب جميع احتياجاتك</p>
+          <p className="text-muted-foreground text-sm sm:text-lg">{t('plans.subtitle')}</p>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
@@ -99,12 +101,12 @@ export default function Plans() {
             >
               {i === 2 && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gradient-bg text-primary-foreground">
-                  <Star className="w-3 h-3 ml-1" /> الأكثر طلباً
+                  <Star className="w-3 h-3 ml-1" /> {t('plans.mostPopular')}
                 </Badge>
               )}
               {plan.is_free && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-success text-primary-foreground">
-                  مجاني
+                  {t('plans.free')}
                 </Badge>
               )}
 
@@ -113,9 +115,9 @@ export default function Plans() {
 
               <div className="mb-5 sm:mb-6">
                 <span className="text-2xl sm:text-3xl font-black gradient-text">
-                  {plan.price === 0 ? 'مجاناً' : `$${plan.price}`}
+                  {plan.price === 0 ? t('plans.free') : `$${plan.price}`}
                 </span>
-                {plan.price > 0 && <span className="text-muted-foreground text-xs sm:text-sm">/شهرياً</span>}
+                {plan.price > 0 && <span className="text-muted-foreground text-xs sm:text-sm">{t('plans.perMonth')}</span>}
               </div>
 
               <div className="space-y-2 mb-6 text-sm">
@@ -125,11 +127,11 @@ export default function Plans() {
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <MemoryStick className="w-4 h-4 text-primary" />
-                  {plan.ram_mb >= 1024 ? `${(plan.ram_mb / 1024).toFixed(0)} GB` : `${plan.ram_mb} MB`} رام
+                  {plan.ram_mb >= 1024 ? `${(plan.ram_mb / 1024).toFixed(0)} GB` : `${plan.ram_mb} MB`} {t('plans.ram')}
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Cpu className="w-4 h-4 text-primary" />
-                  {plan.cpu_cores} نواة
+                  {plan.cpu_cores} {t('plans.core')}
                 </div>
               </div>
 
@@ -147,7 +149,7 @@ export default function Plans() {
                 className={`w-full ${i === 2 ? 'gradient-bg text-primary-foreground glow-primary' : ''}`}
                 variant={i === 2 ? 'default' : 'outline'}
               >
-                {plan.is_free ? 'ابدأ مجاناً' : 'اشترك الآن'}
+                {plan.is_free ? t('plans.startFree') : t('plans.subscribe')}
               </Button>
             </motion.div>
           ))}

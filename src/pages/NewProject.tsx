@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { AlertCircle, Server } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const languages = [
   { id: 'javascript', name: 'JavaScript', icon: '🟨' },
@@ -40,6 +41,7 @@ interface BestSub {
 
 export default function NewProject() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
@@ -60,7 +62,7 @@ export default function NewProject() {
         .eq('status', 'active');
 
       if (!allSubs || allSubs.length === 0) {
-        toast.error('لا يوجد اشتراك فعال');
+        toast.error(t('newProject.noSubscription'));
         navigate('/plans');
         return;
       }
@@ -108,7 +110,7 @@ export default function NewProject() {
     const currentCount = totalProjects || 0;
 
     if (currentCount >= bestSub.maxProjects) {
-      toast.error(`وصلت لحد المشاريع! (${currentCount}/${bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects})`);
+      toast.error(`${t('newProject.limitReached')} (${currentCount}/${bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects})`);
       setLoading(false);
       return;
     }
@@ -125,7 +127,7 @@ export default function NewProject() {
       .single();
 
     if (error) {
-      toast.error('حدث خطأ في إنشاء المشروع');
+      toast.error(t('newProject.createError'));
     } else {
       // Create default file
       const defaultContent = language === 'python'
@@ -139,7 +141,7 @@ export default function NewProject() {
         content: defaultContent,
       });
 
-      toast.success('تم إنشاء المشروع بنجاح!');
+      toast.success(t('newProject.createSuccess'));
       navigate(`/dashboard/project/${project.id}`);
     }
     setLoading(false);
@@ -149,7 +151,7 @@ export default function NewProject() {
     <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto max-w-lg">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-2xl p-6 sm:p-8">
-          <h1 className="text-2xl font-bold gradient-text mb-6 text-center">مشروع جديد</h1>
+          <h1 className="text-2xl font-bold gradient-text mb-6 text-center">{t('newProject.title')}</h1>
 
           {/* Plan info & limits */}
           {bestSub && (
@@ -168,12 +170,12 @@ export default function NewProject() {
                 <Server className="w-5 h-5 text-primary flex-shrink-0" />
               )}
               <div className="text-sm">
-                <span className="text-muted-foreground">أفضل باقة ({bestSub.planName}) — </span>
+                <span className="text-muted-foreground">{t('newProject.bestPlan')} ({bestSub.planName}) — </span>
                 <span className={usedProjects >= bestSub.maxProjects ? 'text-red-400 font-medium' : 'text-foreground'}>
-                  {usedProjects}/{bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects} مشاريع مستخدمة
+                  {usedProjects}/{bestSub.maxProjects === Infinity ? '∞' : bestSub.maxProjects} {t('newProject.projectsUsed')}
                 </span>
                 {usedProjects >= bestSub.maxProjects && (
-                  <p className="text-red-400 text-xs mt-0.5">وصلت للحد الأقصى! قم بترقية باقتك لإنشاء مشاريع إضافية.</p>
+                  <p className="text-red-400 text-xs mt-0.5">{t('newProject.maxReached')}</p>
                 )}
               </div>
             </motion.div>
@@ -181,18 +183,18 @@ export default function NewProject() {
 
           <form onSubmit={handleCreate} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold mb-2">اسم المشروع</label>
+              <label className="block text-sm font-semibold mb-2">{t('newProject.projectName')}</label>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="مثال: My Discord Bot"
+                placeholder={t('newProject.projectNamePlaceholder')}
                 required
                 className="bg-secondary border-border/50"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-3">لغة البرمجة</label>
+              <label className="block text-sm font-semibold mb-3">{t('newProject.language')}</label>
               <div className="grid grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3">
                 {languages.map(lang => (
                   <motion.button
@@ -215,7 +217,7 @@ export default function NewProject() {
             </div>
 
             <Button type="submit" disabled={loading || !bestSub} className="w-full gradient-bg text-primary-foreground">
-              {loading ? 'جاري الإنشاء...' : 'إنشاء المشروع'}
+              {loading ? t('newProject.creating') : t('newProject.create')}
             </Button>
           </form>
         </motion.div>

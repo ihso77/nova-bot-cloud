@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { CreditCard, Lock, Loader2, AlertCircle, Ticket, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Plan {
   id: string;
@@ -18,6 +19,7 @@ interface Plan {
 const PAYMENT_PROXY_URL = 'https://proxy-production-a7b5.up.railway.app/payment';
 
 export default function Checkout() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('plan');
   const { user } = useAuth();
@@ -61,25 +63,25 @@ export default function Checkout() {
       .maybeSingle();
 
     if (error || !data) {
-      toast.error('كود الخصم غير صالح');
+      toast.error(t('checkout.invalidCoupon'));
       setCouponLoading(false);
       return;
     }
 
     if (data.max_uses && data.current_uses >= data.max_uses) {
-      toast.error('كود الخصم انتهى (تم استخدامه بالكامل)');
+      toast.error(t('checkout.couponUsedUp'));
       setCouponLoading(false);
       return;
     }
 
     if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      toast.error('كود الخصم منتهي الصلاحية');
+      toast.error(t('checkout.couponExpired'));
       setCouponLoading(false);
       return;
     }
 
     setAppliedCoupon({ code: data.code, discount_type: data.discount_type, discount_value: data.discount_value });
-    toast.success(`تم تطبيق كود الخصم: ${data.discount_type === 'percentage' ? `${data.discount_value}%` : `$${data.discount_value}`} خصم!`);
+    toast.success(`${t('checkout.couponApplied')}: ${data.discount_type === 'percentage' ? `${data.discount_value}%` : `$${data.discount_value}`} ${t('checkout.discount')}!`);
     setCouponLoading(false);
   };
 
@@ -107,7 +109,7 @@ export default function Checkout() {
           await supabase.rpc('increment_coupon_usage' as never, { coupon_code: appliedCoupon.code } as never);
         }
 
-        toast.success('تم تفعيل اشتراكك مجاناً!');
+        toast.success(t('checkout.freeActivated'));
         navigate('/dashboard');
         return;
       }
@@ -120,7 +122,7 @@ export default function Checkout() {
         body: JSON.stringify({
           amount: finalPrice,
           currency: 'USD',
-          description: `Nova VPS - ${plan.name}${appliedCoupon ? ` (كود: ${appliedCoupon.code})` : ''}`,
+          description: `Nova VPS - ${plan.name}${appliedCoupon ? ` (${t('checkout.discount')}: ${appliedCoupon.code})` : ''}`,
           success_url: `${siteUrl}/payment/success?plan=${plan.id}&user=${user.id}`,
           cancel_url: `${siteUrl}/payment/cancel`,
           metadata: { planId: plan.id, userId: user.id, coupon: appliedCoupon?.code },
@@ -130,13 +132,13 @@ export default function Checkout() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'حدث خطأ في الاتصال ببوابة الدفع');
+        throw new Error(data.error || t('checkout.paymentError'));
       }
 
       const paymentUrl = data.url || data.payment_url || data.checkout_url;
 
       if (!paymentUrl) {
-        throw new Error('لم يتم استلام رابط الدفع');
+        throw new Error(t('checkout.paymentError'));
       }
 
       const payId = data.id || data.payment_id;
@@ -163,8 +165,8 @@ export default function Checkout() {
       window.location.href = paymentUrl;
     } catch (err: any) {
       setStep('error');
-      setErrorMsg(err.message || 'حدث خطأ في الدفع');
-      toast.error(err.message || 'حدث خطأ في الدفع');
+      setErrorMsg(err.message || t('checkout.paymentError'));
+      toast.error(err.message || t('checkout.paymentError'));
     }
     setLoading(false);
   };
@@ -183,34 +185,34 @@ export default function Checkout() {
         {step === 'redirecting' ? (
           <div className="text-center py-8">
             <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
-            <h1 className="text-2xl font-bold mb-2">جاري التحويل لبوابة الدفع...</h1>
-            <p className="text-muted-foreground">سيتم تحويلك تلقائياً، انتظر قليلاً</p>
+            <h1 className="text-2xl font-bold mb-2">{t('checkout.redirecting')}</h1>
+            <p className="text-muted-foreground">{t('checkout.redirectingDesc')}</p>
           </div>
         ) : step === 'error' ? (
           <>
             <div className="text-center mb-6">
               <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold gradient-text">فشل الدفع</h1>
+              <h1 className="text-2xl font-bold gradient-text">{t('checkout.paymentFailed')}</h1>
               <p className="text-sm text-muted-foreground mt-2">{errorMsg}</p>
             </div>
 
             <div className="glass rounded-xl p-4 mb-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">الباقة</span>
+                <span className="font-semibold">{t('checkout.plan')}</span>
                 <span>{plan.name}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-semibold">السعر</span>
-                <span className="text-2xl font-black gradient-text">${finalPrice.toFixed(2)}/شهر</span>
+                <span className="font-semibold">{t('checkout.price')}</span>
+                <span className="text-2xl font-black gradient-text">${finalPrice.toFixed(2)}{t('checkout.perMonth')}</span>
               </div>
             </div>
 
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => navigate('/plans')}>
-                العودة للباقات
+                {t('checkout.backToPlans')}
               </Button>
               <Button className="flex-1 gradient-bg text-primary-foreground" onClick={handlePayment} disabled={loading}>
-                {loading ? 'جاري المعالجة...' : 'إعادة المحاولة'}
+                {loading ? t('checkout.processing') : t('checkout.retry')}
               </Button>
             </div>
           </>
@@ -218,27 +220,27 @@ export default function Checkout() {
           <>
             <div className="text-center mb-8">
               <CreditCard className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h1 className="text-2xl font-bold gradient-text">إتمام الدفع</h1>
+              <h1 className="text-2xl font-bold gradient-text">{t('checkout.completePayment')}</h1>
             </div>
 
             <div className="glass rounded-xl p-4 mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">الباقة</span>
+                <span className="font-semibold">{t('checkout.plan')}</span>
                 <span>{plan.name}</span>
               </div>
               {appliedCoupon && (
                 <div className="flex justify-between items-center mb-2 text-green-400 text-sm">
-                  <span className="flex items-center gap-1"><Ticket className="w-3 h-3" /> خصم ({appliedCoupon.code})</span>
+                  <span className="flex items-center gap-1"><Ticket className="w-3 h-3" /> {t('checkout.discount')} ({appliedCoupon.code})</span>
                   <span>-{appliedCoupon.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `$${appliedCoupon.discount_value}`}</span>
                 </div>
               )}
               <div className="flex justify-between items-center">
-                <span className="font-semibold">السعر</span>
+                <span className="font-semibold">{t('checkout.price')}</span>
                 <div className="text-left">
                   {appliedCoupon && (
                     <span className="text-sm line-through text-muted-foreground ml-2">${plan.price}</span>
                   )}
-                  <span className="text-2xl font-black gradient-text">${finalPrice.toFixed(2)}/شهر</span>
+                  <span className="text-2xl font-black gradient-text">${finalPrice.toFixed(2)}{t('checkout.perMonth')}</span>
                 </div>
               </div>
             </div>
@@ -247,7 +249,7 @@ export default function Checkout() {
             <div className="mb-6">
               <div className="flex gap-2">
                 <Input
-                  placeholder="كود الخصم"
+                  placeholder={t('checkout.couponPlaceholder')}
                   value={couponCode}
                   onChange={e => setCouponCode(e.target.value)}
                   disabled={!!appliedCoupon}
@@ -260,7 +262,7 @@ export default function Checkout() {
                   </Button>
                 ) : (
                   <Button variant="outline" onClick={handleApplyCoupon} disabled={couponLoading || !couponCode.trim()}>
-                    {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'تطبيق'}
+                    {couponLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('checkout.apply')}
                   </Button>
                 )}
               </div>
@@ -271,12 +273,12 @@ export default function Checkout() {
               disabled={loading}
               className="w-full gradient-bg text-primary-foreground text-lg py-6"
             >
-              {loading ? 'جاري المعالجة...' : finalPrice <= 0 ? 'تفعيل مجاناً' : 'ادفع الآن'}
+              {loading ? t('checkout.processing') : finalPrice <= 0 ? t('checkout.activateFree') : t('checkout.payNow')}
               <Lock className="w-4 h-4 mr-2" />
             </Button>
 
             <p className="text-center text-xs text-muted-foreground mt-4 flex items-center justify-center gap-1">
-              <Lock className="w-3 h-3" /> دفع آمن عبر Paymento
+              <Lock className="w-3 h-3" /> {t('checkout.securePayment')}
             </p>
           </>
         )}

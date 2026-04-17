@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Server, Sparkles } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Geometric shapes
 function GeometricShapes() {
@@ -95,6 +96,7 @@ export default function Auth() {
   const isLogin = location.pathname === '/login';
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
+  const { t } = useTranslation();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -110,17 +112,17 @@ export default function Auth() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success('تم تسجيل الدخول بنجاح');
+        toast.success(t('auth.loginSuccess'));
         navigate('/dashboard');
       }
     } else {
       if (!displayName.trim()) {
-        toast.error('الرجاء إدخال اسم العرض');
+        toast.error(t('auth.displayNameRequired'));
         setLoading(false);
         return;
       }
       if (password.length < 8) {
-        toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+        toast.error(t('auth.passwordShort'));
         setLoading(false);
         return;
       }
@@ -128,7 +130,7 @@ export default function Auth() {
       if (error) {
         toast.error(error.message);
       } else {
-        toast.success('تم إنشاء الحساب بنجاح');
+        toast.success(t('auth.registerSuccess'));
         navigate('/dashboard');
       }
     }
@@ -165,7 +167,7 @@ export default function Auth() {
             transition={{ delay: 0.2 }}
             className="text-2xl font-bold gradient-text"
           >
-            {isLogin ? 'تسجيل الدخول' : 'إنشاء حساب'}
+            {isLogin ? t('auth.loginTitle') : t('auth.registerTitle')}
           </motion.h1>
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -173,7 +175,7 @@ export default function Auth() {
             transition={{ delay: 0.3 }}
             className="text-sm text-muted-foreground mt-1"
           >
-            {isLogin ? 'مرحباً بعودتك!' : 'انضم إلينا مجاناً'}
+            {isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
           </motion.p>
         </motion.div>
 
@@ -187,7 +189,7 @@ export default function Auth() {
             {!isLogin && (
               <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
                 <Input
-                  placeholder="اسم العرض"
+                  placeholder={t('auth.displayName')}
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   className="bg-secondary/50 border-border/50 h-11"
@@ -197,7 +199,7 @@ export default function Auth() {
             <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.5 }}>
               <Input
                 type="email"
-                placeholder="البريد الإلكتروني"
+                placeholder={t('auth.email')}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -208,7 +210,7 @@ export default function Auth() {
             <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.6 }}>
               <Input
                 type="password"
-                placeholder="كلمة المرور (8 أحرف على الأقل)"
+                placeholder={t('auth.password')}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
@@ -223,7 +225,7 @@ export default function Auth() {
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                     <Sparkles className="w-4 h-4" />
                   </motion.div>
-                ) : isLogin ? 'دخول' : 'إنشاء حساب'}
+                ) : isLogin ? t('auth.loginBtn') : t('auth.registerBtn')}
               </Button>
             </motion.div>
           </form>
@@ -234,12 +236,12 @@ export default function Auth() {
             transition={{ delay: 0.8 }}
             className="text-center text-sm text-muted-foreground mt-6"
           >
-            {isLogin ? 'ما عندك حساب؟' : 'عندك حساب؟'}{' '}
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
             <button
               onClick={() => navigate(isLogin ? '/register' : '/login')}
               className="text-primary hover:underline font-semibold"
             >
-              {isLogin ? 'سجل الآن' : 'سجل دخول'}
+              {isLogin ? t('auth.registerNow') : t('auth.loginNow')}
             </button>
           </motion.p>
         </motion.div>

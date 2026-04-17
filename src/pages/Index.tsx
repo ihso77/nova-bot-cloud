@@ -3,20 +3,7 @@ import { motion } from 'framer-motion';
 import { Server, Zap, Shield, Clock, ArrowLeft, Globe, Lock, Headphones, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ParticlesBackground from '@/components/ParticlesBackground';
-
-const features = [
-  { icon: Server, title: 'استضافة موثوقة', desc: 'خوادم عالية الأداء وسرعة فائقة' },
-  { icon: Zap, title: 'نشر فوري', desc: 'شغّل بوتك بضغطة زر واحدة' },
-  { icon: Shield, title: 'حماية متقدمة', desc: 'حماية DDoS ونسخ احتياطي تلقائي' },
-  { icon: Clock, title: 'عمل 24/7', desc: 'بوتك يعمل بدون توقف على مدار الساعة' },
-];
-
-const stats = [
-  { value: '99.9%', label: 'وقت التشغيل' },
-  { value: '+500', label: 'بوت نشط' },
-  { value: '<1s', label: 'زمن الاستجابة' },
-  { value: '24/7', label: 'الدعم الفني' },
-];
+import { useTranslation } from 'react-i18next';
 
 const container = {
   hidden: { opacity: 0 },
@@ -29,6 +16,22 @@ const item = {
 
 export default function Index() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const features = [
+    { icon: Server, title: t('index.reliableHosting'), desc: t('index.reliableHostingDesc') },
+    { icon: Zap, title: t('index.instantDeploy'), desc: t('index.instantDeployDesc') },
+    { icon: Shield, title: t('index.advancedProtection'), desc: t('index.advancedProtectionDesc') },
+    { icon: Clock, title: t('index.uptime247'), desc: t('index.uptime247Desc') },
+  ];
+
+  const stats = [
+    { value: '99.9%', label: t('index.uptime') },
+    { value: '+500', label: t('index.activeBots') },
+    { value: '<1s', label: t('index.responseTime') },
+    { value: '24/7', label: t('index.techSupport') },
+  ];
+
   return (
     <div className="min-h-screen relative overflow-hidden" dir="rtl">
       <ParticlesBackground />
@@ -61,7 +64,7 @@ export default function Index() {
           transition={{ delay: 0.4 }}
           className="text-base sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mb-8 sm:mb-10 px-2"
         >
-          استضف بوتات ديسكورد بكل سهولة وأداء عالي
+          {t('index.heroSubtitle')}
         </motion.p>
 
         <motion.div
@@ -71,10 +74,10 @@ export default function Index() {
           className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
         >
           <Button onClick={() => navigate('/plans')} size="lg" className="gradient-bg text-primary-foreground text-base sm:text-lg px-8 sm:px-10 glow-primary">
-            تصفح الباقات
+            {t('index.browsePlans')}
           </Button>
           <Button onClick={() => navigate('/register')} size="lg" variant="outline" className="text-base sm:text-lg px-8 sm:px-10 border-primary/30 hover:bg-primary/10">
-            ابدأ مجاناً
+            {t('index.startFree')}
           </Button>
         </motion.div>
 
@@ -104,9 +107,9 @@ export default function Index() {
             className="text-center mb-8 sm:mb-12"
           >
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black mb-3 sm:mb-4">
-              <span className="gradient-text">لماذا Nova VPS؟</span>
+              <span className="gradient-text">{t('index.whyNova')}</span>
             </h2>
-            <p className="text-muted-foreground text-sm sm:text-lg">كل ما تحتاجه لاستضافة بوتاتك في مكان واحد</p>
+            <p className="text-muted-foreground text-sm sm:text-lg">{t('index.whyNovaDesc')}</p>
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 max-w-6xl mx-auto">
@@ -142,12 +145,12 @@ export default function Index() {
           >
             <div className="absolute inset-0 animate-shimmer" />
             <div className="relative z-10">
-              <h2 className="text-2xl sm:text-3xl font-black mb-4 gradient-text">تحتاج مساعدة؟</h2>
-              <p className="text-muted-foreground mb-6">انضم لسيرفر الدعم على ديسكورد وتواصل مع فريقنا مباشرة</p>
+              <h2 className="text-2xl sm:text-3xl font-black mb-4 gradient-text">{t('index.needHelp')}</h2>
+              <p className="text-muted-foreground mb-6">{t('index.needHelpDesc')}</p>
               <a href="https://discord.gg/yMnRNeK2X3" target="_blank" rel="noopener noreferrer">
                 <Button size="lg" className="gradient-bg text-primary-foreground gap-2 glow-primary">
                   <MessageCircle className="w-5 h-5" />
-                  انضم لسيرفر الدعم
+                  {t('index.joinSupport')}
                 </Button>
               </a>
             </div>
@@ -165,36 +168,36 @@ export default function Index() {
                 <span className="text-lg font-bold gradient-text">Nova VPS</span>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                منصة استضافة سحابية متخصصة في بوتات ديسكورد. نوفر لك بيئة استضافة موثوقة وآمنة مع واجهة تحكم سهلة الاستخدام ونشر فوري.
+                {t('index.footerDesc')}
               </p>
             </div>
 
             <div>
-              <h4 className="font-bold mb-4">روابط سريعة</h4>
+              <h4 className="font-bold mb-4">{t('index.quickLinks')}</h4>
               <div className="space-y-2">
-                <Link to="/plans" className="block text-sm text-muted-foreground hover:text-primary transition-colors">الباقات والأسعار</Link>
-                <Link to="/register" className="block text-sm text-muted-foreground hover:text-primary transition-colors">إنشاء حساب جديد</Link>
-                <Link to="/tools" className="block text-sm text-muted-foreground hover:text-primary transition-colors">الأدوات المجانية</Link>
+                <Link to="/plans" className="block text-sm text-muted-foreground hover:text-primary transition-colors">{t('index.plansPricing')}</Link>
+                <Link to="/register" className="block text-sm text-muted-foreground hover:text-primary transition-colors">{t('index.createAccount')}</Link>
+                <Link to="/tools" className="block text-sm text-muted-foreground hover:text-primary transition-colors">{t('index.freeTools')}</Link>
                 <a href="https://discord.gg/yMnRNeK2X3" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
-                  <MessageCircle className="w-3.5 h-3.5" /> سيرفر الدعم
+                  <MessageCircle className="w-3.5 h-3.5" /> {t('index.supportServer')}
                 </a>
               </div>
             </div>
 
             <div>
-              <h4 className="font-bold mb-4">المميزات</h4>
+              <h4 className="font-bold mb-4">{t('index.features')}</h4>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Globe className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>خوادم عالية السرعة</span>
+                  <span>{t('index.highSpeed')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>حماية وتشفير متقدم</span>
+                  <span>{t('index.encryption')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Headphones className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>دعم فني على مدار الساعة</span>
+                  <span>{t('index.support247')}</span>
                 </div>
               </div>
             </div>
@@ -202,12 +205,12 @@ export default function Index() {
 
           <div className="border-t border-border/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
             <p className="text-xs text-muted-foreground">
-              Nova VPS &copy; {new Date().getFullYear()} - جميع الحقوق محفوظة
+              Nova VPS &copy; {new Date().getFullYear()} - {t('index.allRightsReserved')}
             </p>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <a href="https://discord.gg/yMnRNeK2X3" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">ديسكورد</a>
-              <span>سياسة الخصوصية</span>
-              <span>شروط الاستخدام</span>
+              <a href="https://discord.gg/yMnRNeK2X3" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Discord</a>
+              <span>{t('index.privacyPolicy')}</span>
+              <span>{t('index.termsOfUse')}</span>
             </div>
           </div>
         </div>

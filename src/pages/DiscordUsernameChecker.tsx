@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -87,6 +88,7 @@ function formatTime(ms: number): string {
 }
 
 export default function DiscordUsernameChecker() {
+  const { t } = useTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const isRunningRef = useRef(false);
   const [length, setLength] = useState(4);
@@ -127,7 +129,7 @@ export default function DiscordUsernameChecker() {
             setIsRunning(true);
           } else {
             // Session expired (12+ hours)
-            addLog('الجلسة السابقة انتهت (أكثر من 12 ساعة)');
+            addLog(t('discordChecker.sessionExpired'));
             localStorage.removeItem(STORAGE_KEY);
           }
         }
@@ -167,8 +169,8 @@ export default function DiscordUsernameChecker() {
 
         if (elapsed >= MAX_SESSION_HOURS * 60 * 60 * 1000) {
           stopChecking();
-          addLog('تم الإيقاف تلقائياً - تجاوزت 12 ساعة من الفحص المستمر');
-          toast.warning('تم إيقاف الفحص تلقائياً (12 ساعة)');
+          addLog(t('discordChecker.autoStopped'));
+          toast.warning(t('discordChecker.autoStopped'));
         }
       }, 1000);
 
@@ -196,7 +198,7 @@ export default function DiscordUsernameChecker() {
       if (!res.ok) {
         errorCountRef.current += 1;
         setErrorCount(errorCountRef.current);
-        addLog(`خطأ في الاتصال: ${username}`);
+        addLog(`${t('discordChecker.connectionError')}: ${username}`);
         return;
       }
 
@@ -204,14 +206,14 @@ export default function DiscordUsernameChecker() {
 
       if (data.available) {
         setAvailable(prev => [username, ...prev]);
-        addLog(`✅ ${username} - متاح!`);
-        toast.success(`${username} متاح!`, { duration: 5000 });
+        addLog(`✅ ${username} - ${t('discordChecker.availableTab')}!`);
+        toast.success(`${username} ${t('discordChecker.availableTab')}!`, { duration: 5000 });
       } else {
         setUnavailable(prev => {
           const newList = [username, ...prev];
           return newList.slice(0, 500);
         });
-        addLog(`❌ ${username} - غير متاح`);
+        addLog(`❌ ${username} - ${t('discordChecker.unavailableTab')}`);
       }
 
       setTotalChecked(prev => prev + 1);
@@ -222,12 +224,12 @@ export default function DiscordUsernameChecker() {
       const msg = err instanceof Error ? err.message : 'خطأ غير معروف';
       errorCountRef.current += 1;
       setErrorCount(errorCountRef.current);
-      addLog(`فشل الاتصال: ${msg}`);
+      addLog(`${t('discordChecker.connectionError')}: ${msg}`);
 
       if (errorCountRef.current >= 5) {
         stopChecking();
-        addLog('تم الإيقاف بسبب أخطاء متتالية في الاتصال');
-        toast.error('تم الإيقاف بسبب مشاكل في الاتصال');
+        addLog(t('discordChecker.consecutiveErrors'));
+        toast.error(t('discordChecker.connectionError'));
       }
     }
   }, [addLog]);
@@ -257,7 +259,7 @@ export default function DiscordUsernameChecker() {
     setElapsedTime(0);
     setErrorCount(0);
     addLog(`بدء الفحص - طول اليوزر: ${length} حروف`);
-    toast.success('بدأ الفحص!');
+    toast.success(t('discordChecker.checkStarted'));
   };
 
   const stopChecking = () => {
@@ -295,7 +297,7 @@ export default function DiscordUsernameChecker() {
 
   const copyAvailableList = () => {
     if (available.length === 0) {
-      toast.error('لا يوجد يوزرات متاحة للنسخ');
+      toast.error(t('discordChecker.noAvailableToCopy'));
       return;
     }
     copyToClipboard(available.join('\n'));
@@ -303,7 +305,7 @@ export default function DiscordUsernameChecker() {
 
   const copyAllUnavailable = () => {
     if (unavailable.length === 0) {
-      toast.error('لا يوجد يوزرات للنسخ');
+      toast.error(t('discordChecker.noUnavailableToCopy'));
       return;
     }
     copyToClipboard(unavailable.join('\n'));
@@ -330,11 +332,11 @@ export default function DiscordUsernameChecker() {
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black">
-              <span className="gradient-text">فاحص يوزرات ديسكورد</span>
+              <span className="gradient-text">{t('discordChecker.title')}</span>
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-lg">
-            أداة مجانية للبحث عن يوزرات ديسكورد غير مستخدمة
+            {t('discordChecker.subtitle')}
           </p>
         </motion.div>
 
@@ -348,7 +350,7 @@ export default function DiscordUsernameChecker() {
             {/* Length Selection */}
             <div className="mb-6">
               <label className="block text-sm font-semibold mb-3 text-muted-foreground">
-                عدد حروف اليوزر المطلوب
+                {t('discordChecker.length')}
               </label>
               <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {lengthOptions.map(len => (
@@ -358,7 +360,7 @@ export default function DiscordUsernameChecker() {
                     size="sm"
                     onClick={() => {
                       if (isRunning) {
-                        toast.error('أوقف الفحص أولاً قبل تغيير الطول');
+                        toast.error(t('discordChecker.stopBeforeChange'));
                         return;
                       }
                       setLength(len);
@@ -378,22 +380,22 @@ export default function DiscordUsernameChecker() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="w-4 h-4 text-primary" />
-                <span className="text-muted-foreground">إجمالي الفحص:</span>
+                <span className="text-muted-foreground">{t('discordChecker.totalChecked')}</span>
                 <span className="font-bold">{totalChecked.toLocaleString()}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-muted-foreground">متاح:</span>
+                <span className="text-muted-foreground">{t('discordChecker.available')}</span>
                 <span className="font-bold text-green-500">{available.length}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <UserX className="w-4 h-4 text-red-400" />
-                <span className="text-muted-foreground">غير متاح:</span>
+                <span className="text-muted-foreground">{t('discordChecker.unavailable')}</span>
                 <span className="font-bold text-red-400">{unavailable.length}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="w-4 h-4 text-yellow-500" />
-                <span className="text-muted-foreground">المدة:</span>
+                <span className="text-muted-foreground">{t('discordChecker.duration')}</span>
                 <span className="font-bold">{formatTime(elapsedTime)}</span>
               </div>
             </div>
@@ -403,7 +405,7 @@ export default function DiscordUsernameChecker() {
               <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-sm text-muted-foreground">جاري الفحص:</span>
+                  <span className="text-sm text-muted-foreground">{t('discordChecker.checking')}</span>
                   <span className="font-mono font-bold text-primary">{currentUsername}</span>
                 </div>
               </div>
@@ -414,7 +416,7 @@ export default function DiscordUsernameChecker() {
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-yellow-500" />
                   <span className="text-sm text-yellow-600">
-                    الفحص متوقف - اضغط تشغيل للاستمرار
+                    {t('discordChecker.paused')}
                   </span>
                 </div>
               </div>
@@ -459,7 +461,7 @@ export default function DiscordUsernameChecker() {
                 disabled={available.length === 0}
               >
                 <Copy className="w-4 h-4" />
-                نسخ المتاح ({available.length})
+                {t('discordChecker.copyAvailable')} ({available.length})
               </Button>
               <Button
                 onClick={copyAllUnavailable}
@@ -468,7 +470,7 @@ export default function DiscordUsernameChecker() {
                 disabled={unavailable.length === 0}
               >
                 <Copy className="w-4 h-4" />
-                نسخ غير المتاح
+                {t('discordChecker.copyUnavailable')}
               </Button>
             </div>
           </Card>
@@ -484,7 +486,7 @@ export default function DiscordUsernameChecker() {
             <TabsList className="glass w-full grid grid-cols-3 mb-4">
               <TabsTrigger value="available" className="gap-2">
                 <UserCheck className="w-4 h-4" />
-                متاح
+                {t('discordChecker.availableTab')}
                 {available.length > 0 && (
                   <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                     {available.length}
@@ -493,7 +495,7 @@ export default function DiscordUsernameChecker() {
               </TabsTrigger>
               <TabsTrigger value="unavailable" className="gap-2">
                 <UserX className="w-4 h-4" />
-                غير متاح
+                {t('discordChecker.unavailableTab')}
                 {unavailable.length > 0 && (
                   <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
                     {unavailable.length}
@@ -502,7 +504,7 @@ export default function DiscordUsernameChecker() {
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <Activity className="w-4 h-4" />
-                السجل
+                {t('discordChecker.logsTab')}
                 {logs.length > 0 && (
                   <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
                     {logs.length}
@@ -517,14 +519,14 @@ export default function DiscordUsernameChecker() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    اليوزرات المتاحة
+                    {t('discordChecker.availableTitle')}
                   </h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setAvailable([]);
-                      toast.success('تم مسح قائمة المتاح');
+                      toast.success(t('discordChecker.clearedAvailable'));
                     }}
                     className="text-red-400 hover:text-red-300 gap-1"
                   >
@@ -536,8 +538,8 @@ export default function DiscordUsernameChecker() {
                 {available.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <UserCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>لم يتم العثور على يوزرات متاحة بعد</p>
-                    <p className="text-sm mt-1">شغّل الفحص للبدء</p>
+                    <p>{t('discordChecker.availableEmpty')}</p>
+                    <p className="text-sm mt-1">{t('discordChecker.availableEmptyHint')}</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[300px] sm:h-[400px]">
@@ -580,14 +582,14 @@ export default function DiscordUsernameChecker() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <UserX className="w-5 h-5 text-red-400" />
-                    اليوزرات غير المتاحة
+                    {t('discordChecker.unavailableTitle')}
                   </h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setUnavailable([]);
-                      toast.success('تم مسح قائمة غير المتاح');
+                      toast.success(t('discordChecker.clearedUnavailable'));
                     }}
                     className="text-red-400 hover:text-red-300 gap-1"
                   >
@@ -599,8 +601,8 @@ export default function DiscordUsernameChecker() {
                 {unavailable.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <UserX className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>لا يوجد يوزرات في القائمة</p>
-                    <p className="text-sm mt-1">اليوزرات المستخدمة ستظهر هنا</p>
+                    <p>{t('discordChecker.unavailableEmpty')}</p>
+                    <p className="text-sm mt-1">{t('discordChecker.unavailableEmptyHint')}</p>
                   </div>
                 ) : (
                   <ScrollArea className="h-[300px] sm:h-[400px]">
@@ -611,7 +613,7 @@ export default function DiscordUsernameChecker() {
                           className="flex items-center justify-between p-2 rounded-lg bg-red-500/5 border border-red-500/5 text-sm"
                         >
                           <span className="font-mono text-muted-foreground">{username}</span>
-                          <span className="text-xs text-red-400/60">مستخدم</span>
+                          <span className="text-xs text-red-400/60">{t('discordChecker.used')}</span>
                         </div>
                       ))}
                     </div>
@@ -631,14 +633,14 @@ export default function DiscordUsernameChecker() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Activity className="w-5 h-5 text-blue-400" />
-                    سجل العمليات
+                    {t('discordChecker.logTitle')}
                   </h3>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setLogs([]);
-                      toast.success('تم مسح السجل');
+                      toast.success(t('discordChecker.clearedLog'));
                     }}
                     className="text-red-400 hover:text-red-300 gap-1"
                   >
@@ -654,8 +656,8 @@ export default function DiscordUsernameChecker() {
                   {logs.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground font-sans">
                       <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p>لا يوجد سجلات بعد</p>
-                      <p className="text-sm mt-1">العمليات ستُسجّل هنا تلقائياً</p>
+                      <p>{t('discordChecker.logEmpty')}</p>
+                      <p className="text-sm mt-1">{t('discordChecker.logEmptyHint')}</p>
                     </div>
                   ) : (
                     logs.map((log, i) => (
@@ -691,27 +693,23 @@ export default function DiscordUsernameChecker() {
           <Card className="glass p-4 sm:p-6">
             <h3 className="font-bold mb-3 sm:mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-yellow-500" />
-              كيف تعمل الأداة؟
+              {t('discordChecker.howItWorks')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
               <div>
                 <p className="mb-2">
-                  تقوم الأداة بتوليد يوزرات ديسكورد عشوائية بطول محدد ثم تفحصها عبر
-                  API ديسكورد الرسمي لمعرفة إن كانت متاحة أو لا.
+                  {t('discordChecker.howItP1')}
                 </p>
                 <p className="mb-2">
-                  اليوزرات المتاحة (غير مستخدمة) تظهر في قائمة المتاح مباشرة، و
-                  اليوزرات المستخدمة تروح لقائمة غير المتاح.
+                  {t('discordChecker.howItP2')}
                 </p>
               </div>
               <div>
                 <p className="mb-2">
-                  الفحص يستمر شغال حتى لو طلعت من الصفحة و ترجع، والبيانات محفوظة
-                  في المتصفح. يتوقف تلقائياً بعد 12 ساعة متواصلة.
+                  {t('discordChecker.howItP3')}
                 </p>
                 <p>
-                  الأداة تولّد يوزرات تحتوي على حروف، أرقام، شرطات سفلية (_)، ونقاط (.)
-                  مع الالتزام بقوانين ديسكورد لليوزرات.
+                  {t('discordChecker.howItP4')}
                 </p>
               </div>
             </div>

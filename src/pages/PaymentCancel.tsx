@@ -2,8 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 export default function PaymentCancel() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -14,16 +16,16 @@ export default function PaymentCancel() {
         className="w-full max-w-md glass rounded-2xl p-6 sm:p-8 text-center"
       >
         <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-2">تم إلغاء الدفع</h1>
+        <h1 className="text-2xl font-bold mb-2">{t('paymentCancel.title')}</h1>
         <p className="text-muted-foreground mb-6">
-          لم يتم خصم أي مبلغ. يمكنك المحاولة مرة أخرى في أي وقت.
+          {t('paymentCancel.description')}
         </p>
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={() => navigate('/')}>
-            الرئيسية
+            {t('paymentCancel.home')}
           </Button>
           <Button className="flex-1 gradient-bg text-primary-foreground" onClick={() => navigate('/plans')}>
-            العودة للباقات
+            {t('paymentCancel.backToPlans')}
           </Button>
         </div>
       </motion.div>

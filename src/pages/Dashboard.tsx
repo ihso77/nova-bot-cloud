@@ -9,6 +9,7 @@ import { Plus, FolderOpen, Clock, Play, Square, HardDrive } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface Project {
   id: string;
@@ -39,6 +40,7 @@ function formatBytes(bytes: number): string {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -79,10 +81,10 @@ export default function Dashboard() {
   };
 
   const statusLabels: Record<string, string> = {
-    running: 'يعمل',
-    stopped: 'متوقف',
-    deploying: 'جاري النشر',
-    error: 'خطأ',
+    running: t('dashboard.running'),
+    stopped: t('dashboard.stopped'),
+    deploying: t('dashboard.deploying'),
+    error: t('dashboard.error'),
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -91,10 +93,10 @@ export default function Dashboard() {
     <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto max-w-5xl">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold gradient-text">مشاريعي</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold gradient-text">{t('dashboard.title')}</h1>
           {subscriptions.length > 0 && (
               <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground w-full sm:w-auto justify-center">
-                <Plus className="w-4 h-4 ml-2" /> مشروع جديد
+                <Plus className="w-4 h-4 ml-2" /> {t('dashboard.newProject')}
               </Button>
           )}
         </motion.div>
@@ -115,24 +117,24 @@ export default function Dashboard() {
                 <div key={sub.id} className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{sub.plans?.name}</span>
-                    {sub.is_free_trial && <Badge className="bg-success/20 text-success">تجريبية</Badge>}
+                    {sub.is_free_trial && <Badge className="bg-success/20 text-success">{t('dashboard.trial')}</Badge>}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4 flex-shrink-0" />
-                    <span>تنتهي: {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}</span>
+                    <span>{t('dashboard.expires')} {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}</span>
                   </div>
                 </div>
               ))}
               {/* Storage bar using BEST plan limits */}
               <div className="glass rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold">التخزين (باقة {bestSub.plans?.name})</span>
+                  <span className="font-semibold">{t('dashboard.storageUsed')} ({bestSub.plans?.name})</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
                   <div className="flex-1">
                     <div className="flex justify-between mb-1 text-muted-foreground">
-                      <span>التخزين المستخدم</span>
+                      <span>{t('dashboard.storageUsed')}</span>
                       <span className={isNearLimit ? 'text-yellow-400 font-medium' : ''}>{formatBytes(totalStorage)} / {formatBytes(storageLimitBytes)}</span>
                     </div>
                     <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -150,8 +152,8 @@ export default function Dashboard() {
 
         {subscriptions.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 sm:p-12 text-center mb-6 sm:mb-8">
-            <p className="text-muted-foreground mb-4">ليس لديك اشتراك فعال</p>
-            <Button onClick={() => navigate('/plans')} className="gradient-bg text-primary-foreground">تصفح الباقات</Button>
+            <p className="text-muted-foreground mb-4">{t('dashboard.noSubscription')}</p>
+            <Button onClick={() => navigate('/plans')} className="gradient-bg text-primary-foreground">{t('index.browsePlans')}</Button>
           </motion.div>
         )}
 
@@ -159,9 +161,9 @@ export default function Dashboard() {
         {projects.length === 0 && subscriptions.length > 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center">
             <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">لا توجد مشاريع بعد</p>
+            <p className="text-muted-foreground mb-4">{t('dashboard.noProjects')}</p>
             <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground">
-              <Plus className="w-4 h-4 ml-2" /> أنشئ أول مشروع
+              <Plus className="w-4 h-4 ml-2" /> {t('dashboard.createFirst')}
             </Button>
           </motion.div>
         ) : (

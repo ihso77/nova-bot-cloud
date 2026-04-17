@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,7 @@ export { fetchPendingGifts, claimGift, saveGiftLocal };
 export type { PendingGift };
 
 export default function GiftPopup() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [gift, setGift] = useState<PendingGift | null>(null);
   const [show, setShow] = useState(false);
@@ -102,7 +104,7 @@ export default function GiftPopup() {
     await claimGift(gift.id, gift.plan_name, user.id);
     setClaiming(false);
     setClaimed(true);
-    toast.success('تم استلام الهدية بنجاح!');
+    toast.success(t('gift.giftReceived'));
     setTimeout(() => setShow(false), 4000);
   };
 
@@ -148,12 +150,12 @@ export default function GiftPopup() {
 
                   <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
                     className="text-2xl font-black mb-2">
-                    <span className="gradient-text">لديك هدية!</span>
+                    <span className="gradient-text">{t('gift.youHaveGift')}</span>
                   </motion.h2>
 
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}
                     className="bg-secondary/50 rounded-xl p-4 mb-4">
-                    <p className="text-muted-foreground text-sm mb-1">هدية من</p>
+                    <p className="text-muted-foreground text-sm mb-1">{t('gift.giftFrom')}</p>
                     <p className="font-bold text-lg flex items-center justify-center gap-1">
                       <Star className="w-4 h-4 text-yellow-400" />
                       {gift.from_name}
@@ -168,7 +170,7 @@ export default function GiftPopup() {
                       <span className="font-bold text-lg">{gift.plan_name}</span>
                     </div>
                     <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> 30 يوم</span>
+                      <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {t('gift.duration')}</span>
                     </div>
                   </motion.div>
 
@@ -180,7 +182,7 @@ export default function GiftPopup() {
                           <Sparkles className="w-5 h-5" />
                         </motion.div>
                       ) : (
-                        <><Check className="w-5 h-5" /> استلام الهدية</>
+                        <><Check className="w-5 h-5" /> {t('gift.claim')}</>
                       )}
                     </Button>
                   </motion.div>
@@ -198,15 +200,15 @@ export default function GiftPopup() {
               </motion.div>
               <motion.h2 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
                 className="text-xl font-bold mb-2 text-green-400">
-                تم استلام الهدية!
+                {t('gift.claimed')}
               </motion.h2>
               <motion.p initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
                 className="text-muted-foreground text-sm mb-4">
-                باقة {gift.plan_name} فعالة لمدة 30 يوم
+                {t('gift.planActive', { plan: gift.plan_name })}
               </motion.p>
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }}>
                 <Button onClick={() => setShow(false)} className="gradient-bg text-primary-foreground">
-                  الذهاب للوحة التحكم
+                  {t('gift.goToDashboard')}
                 </Button>
               </motion.div>
             </motion.div>

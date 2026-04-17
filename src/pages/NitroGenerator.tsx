@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -33,19 +34,10 @@ function generateNitroCode(): string {
   return code;
 }
 
-function formatTime(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}س ${m}د ${s}ث`;
-  if (m > 0) return `${m}د ${s}ث`;
-  return `${s}ث`;
-}
-
 const checkedCodes = new Set<string>();
 
 export default function NitroGenerator() {
+  const { t } = useTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const [valid, setValid] = useState<string[]>([]);
   const [invalid, setInvalid] = useState<string[]>([]);
@@ -58,6 +50,16 @@ export default function NitroGenerator() {
   const isRunningRef = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatTime = useCallback((ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return t('nitroGen.timeHMS', { h, m, s });
+    if (m > 0) return t('nitroGen.timeMS', { m, s });
+    return t('nitroGen.timeS', { s });
+  }, [t]);
 
   useEffect(() => {
     try {
@@ -115,28 +117,28 @@ export default function NitroGenerator() {
         // Valid code found!
         const fullLink = `https://discord.gift/${code}`;
         setValid(prev => [fullLink, ...prev]);
-        addLog(`🎉 كود صالح! ${fullLink}`);
-        toast.success(`تم العثور على كود نيترو صالح!`, { duration: 10000 });
+        addLog(`🎉 ${t('nitroGen.validCodeLog')} ${fullLink}`);
+        toast.success(t('nitroGen.validCodeToast'), { duration: 10000 });
       } else if (res.status === 404) {
         // Invalid/used code
         setInvalid(prev => {
           const newList = [`discord.gift/${code}`, ...prev];
           return newList.slice(0, 500);
         });
-        addLog(`❌ ${code.substring(0, 8)}... - غير صالح`);
+        addLog(`❌ ${t('nitroGen.invalidCodeLog', { code: code.substring(0, 8) })}`);
       } else if (res.status === 429) {
         // Rate limited
-        addLog(`⏳ Rate limited - انتظر...`);
+        addLog(`⏳ ${t('nitroGen.rateLimited')}`);
         await new Promise(r => setTimeout(r, 5000));
       } else {
-        addLog(`⚠️ خطأ ${res.status} - ${code.substring(0, 8)}...`);
+        addLog(`⚠️ ${t('nitroGen.errorLog', { status: res.status, code: code.substring(0, 8) })}`);
       }
 
       setTotalChecked(prev => prev + 1);
     } catch (err) {
-      addLog(`🔴 فشل الاتصال - جاري المحاولة مرة أخرى...`);
+      addLog(`🔴 ${t('nitroGen.connectionFailed')}`);
     }
-  }, [addLog]);
+  }, [addLog, t]);
 
   useEffect(() => {
     if (isRunning) {
@@ -156,8 +158,8 @@ export default function NitroGenerator() {
     setIsRunning(true);
     setStartedAt(Date.now());
     setElapsedTime(0);
-    addLog('🚀 بدأ البحث عن أكواد نيترو...');
-    toast.success('بدأ البحث!');
+    addLog(`🚀 ${t('nitroGen.searchStartedLog')}`);
+    toast.success(t('nitroGen.searchStarted'));
   };
 
   const stopChecking = () => {
@@ -166,7 +168,7 @@ export default function NitroGenerator() {
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     setCurrentCode('');
-    addLog('⏹️ تم إيقاف البحث');
+    addLog(`⏹️ ${t('nitroGen.searchStopped')}`);
   };
 
   const resetAll = () => {
@@ -175,12 +177,12 @@ export default function NitroGenerator() {
     setStartedAt(null); setElapsedTime(0); setCurrentCode('');
     checkedCodes.clear();
     localStorage.removeItem(STORAGE_KEY);
-    toast.success('تم إعادة تعيين كل شيء');
+    toast.success(t('nitroGen.resetDone'));
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('تم النسخ!');
+    toast.success(t('nitroGen.copied'));
   };
 
   return (
@@ -191,14 +193,14 @@ export default function NitroGenerator() {
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
             <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black">
-              <span className="gradient-text">مولد نيترو ديسكورد</span>
+              <span className="gradient-text">{t('nitroGen.title')}</span>
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-lg">
-            أداة مجانية لتوليد وفحص أكواد نيترو ديسكورد
+            {t('nitroGen.subtitle')}
           </p>
           <Badge className="mt-2 bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-            ⚠️ للاستخدام التعليمي فقط
+            ⚠️ {t('nitroGen.educationalOnly')}
           </Badge>
         </motion.div>
 
@@ -209,22 +211,22 @@ export default function NitroGenerator() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="flex items-center gap-2 text-sm">
                 <Hash className="w-4 h-4 text-primary" />
-                <span className="text-muted-foreground">فحص:</span>
+                <span className="text-muted-foreground">{t('nitroGen.checked')}</span>
                 <span className="font-bold">{totalChecked.toLocaleString()}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span className="text-muted-foreground">صالح:</span>
+                <span className="text-muted-foreground">{t('nitroGen.valid')}</span>
                 <span className="font-bold text-green-500">{valid.length}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <XCircle className="w-4 h-4 text-red-400" />
-                <span className="text-muted-foreground">غير صالح:</span>
+                <span className="text-muted-foreground">{t('nitroGen.invalid')}</span>
                 <span className="font-bold text-red-400">{invalid.length}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Clock className="w-4 h-4 text-yellow-500" />
-                <span className="text-muted-foreground">المدة:</span>
+                <span className="text-muted-foreground">{t('nitroGen.duration')}</span>
                 <span className="font-bold">{formatTime(elapsedTime)}</span>
               </div>
             </div>
@@ -234,7 +236,7 @@ export default function NitroGenerator() {
               <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-sm text-muted-foreground">جاري الفحص:</span>
+                  <span className="text-sm text-muted-foreground">{t('nitroGen.checking')}</span>
                   <span className="font-mono font-bold text-primary text-xs">{currentCode}</span>
                 </div>
               </div>
@@ -246,20 +248,20 @@ export default function NitroGenerator() {
             <div className="flex flex-wrap gap-2 sm:gap-3">
               {!isRunning ? (
                 <Button onClick={startChecking} className="gradient-bg text-primary-foreground gap-2 px-6">
-                  <Play className="w-4 h-4" /> تشغيل
+                  <Play className="w-4 h-4" /> {t('nitroGen.start')}
                 </Button>
               ) : (
                 <Button onClick={stopChecking} variant="destructive" className="gap-2 px-6">
-                  <Square className="w-4 h-4" /> إيقاف
+                  <Square className="w-4 h-4" /> {t('nitroGen.stop')}
                 </Button>
               )}
               <Button onClick={resetAll} variant="outline" className="gap-2">
-                <RotateCcw className="w-4 h-4" /> إعادة تعيين
+                <RotateCcw className="w-4 h-4" /> {t('nitroGen.reset')}
               </Button>
               <div className="flex-1" />
-              <Button onClick={() => valid.length > 0 ? copyToClipboard(valid.join('\n')) : toast.error('لا يوجد أكواد صالحة')}
+              <Button onClick={() => valid.length > 0 ? copyToClipboard(valid.join('\n')) : toast.error(t('nitroGen.noValidCodes'))}
                 variant="outline" className="gap-2" disabled={valid.length === 0}>
-                <Copy className="w-4 h-4" /> نسخ الصالحة ({valid.length})
+                <Copy className="w-4 h-4" /> {t('nitroGen.copyValid')} ({valid.length})
               </Button>
             </div>
           </Card>
@@ -270,15 +272,15 @@ export default function NitroGenerator() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="glass w-full grid grid-cols-3 mb-4">
               <TabsTrigger value="valid" className="gap-2">
-                <Gift className="w-4 h-4" /> صالحة
+                <Gift className="w-4 h-4" /> {t('nitroGen.validTab')}
                 {valid.length > 0 && <Badge className="bg-green-500/20 text-green-400 border-green-500/30">{valid.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="invalid" className="gap-2">
-                <XCircle className="w-4 h-4" /> غير صالحة
+                <XCircle className="w-4 h-4" /> {t('nitroGen.invalidTab')}
                 {invalid.length > 0 && <Badge className="bg-red-500/20 text-red-400 border-red-500/30">{invalid.length}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
-                <Activity className="w-4 h-4" /> السجل
+                <Activity className="w-4 h-4" /> {t('nitroGen.logsTab')}
               </TabsTrigger>
             </TabsList>
 
@@ -302,8 +304,8 @@ export default function NitroGenerator() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <Gift className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>لم يتم العثور على أكواد صالحة بعد</p>
-                    <p className="text-xs mt-1">شغّل المولد وانتظر...</p>
+                    <p>{t('nitroGen.validEmpty')}</p>
+                    <p className="text-xs mt-1">{t('nitroGen.validEmptyHint')}</p>
                   </div>
                 )}
               </Card>
@@ -323,7 +325,7 @@ export default function NitroGenerator() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <XCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>لا يوجد أكواد مفحوصة</p>
+                    <p>{t('nitroGen.invalidEmpty')}</p>
                   </div>
                 )}
               </Card>
@@ -340,7 +342,7 @@ export default function NitroGenerator() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>لا يوجد سجلات</p>
+                    <p>{t('nitroGen.logEmpty')}</p>
                   </div>
                 )}
               </Card>

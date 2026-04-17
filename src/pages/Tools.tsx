@@ -1,35 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, ArrowLeft, Wrench, Zap, Clock } from 'lucide-react';
-
-const tools = [
-  {
-    name: 'فاحص يوزرات ديسكورد',
-    description: 'ابحث عن يوزرات ديسكورد غير مستخدمة بطول محدد. أداة مجانية وسريعة مع حفظ تلقائي للنتائج.',
-    icon: Search,
-    route: '/tools/discord-username-checker',
-    tag: 'مجاني',
-    tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-  },
-  {
-    name: 'مولد نيترو ديسكورد',
-    description: 'يولد أكواد نيترو ديسكورد ويفحصها تلقائياً. يعرض الأكواد الصالحة وغير الصالحة مع سجل مفصل.',
-    icon: Zap,
-    route: '/tools/nitro-generator',
-    tag: 'مجاني',
-    tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-  },
-  {
-    name: 'مولد طوابع الوقت',
-    description: 'أنشئ طوابع وقت ديسكورد الديناميكية بجميع الصيغ. تظهر بتوقيت كل مستخدم تلقائياً عند لصقها.',
-    icon: Clock,
-    route: '/tools/discord-timestamp',
-    tag: 'مجاني',
-    tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
-  },
-];
 
 const container = {
   hidden: { opacity: 0 },
@@ -41,6 +15,35 @@ const item = {
 };
 
 export default function Tools() {
+  const { t } = useTranslation();
+
+  const tools = [
+    {
+      name: t('tools.usernameChecker'),
+      description: t('tools.usernameCheckerDesc'),
+      icon: Search,
+      route: '/tools/discord-username-checker',
+      tag: t('tools.free'),
+      tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
+    },
+    {
+      name: t('tools.nitroGenerator'),
+      description: t('tools.nitroGeneratorDesc'),
+      icon: Zap,
+      route: '/tools/nitro-generator',
+      tag: t('tools.free'),
+      tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
+    },
+    {
+      name: t('tools.timestampGen'),
+      description: t('tools.timestampGenDesc'),
+      icon: Clock,
+      route: '/tools/discord-timestamp',
+      tag: t('tools.free'),
+      tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
+    },
+  ];
+
   return (
     <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
       <div className="container mx-auto max-w-5xl">
@@ -60,10 +63,10 @@ export default function Tools() {
             </div>
           </motion.div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-3 sm:mb-4">
-            <span className="gradient-text">ادوات مجانية</span>
+            <span className="gradient-text">{t('tools.title')}</span>
           </h1>
           <p className="text-muted-foreground text-sm sm:text-lg max-w-lg mx-auto">
-            أدوات مفيدة ومجانية من Nova VPS لتحسين تجربتك
+            {t('tools.subtitle')}
           </p>
         </motion.div>
 
@@ -75,7 +78,7 @@ export default function Tools() {
         >
           {tools.map((tool) => (
             <motion.div
-              key={tool.name}
+              key={tool.route}
               variants={item}
               whileHover={{ y: -6, scale: 1.02 }}
               className="glass rounded-2xl p-5 sm:p-7 relative group cursor-pointer hover:border-primary/30 transition-all duration-300"
@@ -90,7 +93,7 @@ export default function Tools() {
               <p className="text-muted-foreground text-sm leading-relaxed mb-5 sm:mb-6">{tool.description}</p>
               <Link to={tool.route}>
                 <Button className="gradient-bg text-primary-foreground gap-2 group-hover:glow-primary transition-all">
-                  <span>فتح الأداة</span>
+                  <span>{t('tools.openTool')}</span>
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -104,7 +107,7 @@ export default function Tools() {
           transition={{ delay: 0.4 }}
           className="mt-10 sm:mt-14 text-center"
         >
-          <p className="text-muted-foreground text-sm">أدوات جديدة قريباً...</p>
+          <p className="text-muted-foreground text-sm">{t('tools.comingSoon')}</p>
         </motion.div>
       </div>
     </div>

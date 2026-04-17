@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,21 +20,6 @@ import {
   TrendingUp, Layers, Database, ShieldCheck, FileCode2, Ticket, Plus, Percent,
   Bot, MessageSquare, Hash, Menu,
 } from 'lucide-react';
-
-// --- Admin Navigation ---
-const navItems = [
-  { id: 'overview', icon: BarChart3, label: 'نظرة عامة' },
-  { id: 'users', icon: Users, label: 'المستخدمين' },
-  { id: 'projects', icon: Server, label: 'المشاريع' },
-  { id: 'payments', icon: CreditCard, label: 'المدفوعات' },
-  { id: 'discord-bot', icon: Bot, label: 'بوت ديسكورد' },
-  { id: 'coupons', icon: Ticket, label: 'أكواد الخصم' },
-  { id: 'gifts', icon: Gift, label: 'إهداء الباقات' },
-  { id: 'notifications', icon: MessageSquare, label: 'الإعلانات' },
-  { id: 'settings', icon: Settings, label: 'إعدادات الموقع' },
-  { id: 'plans-manage', icon: Crown, label: 'إدارة الباقات' },
-  { id: 'logs', icon: Activity, label: 'سجل النشاط' },
-];
 
 interface AdminUser {
   id: string;
@@ -68,6 +54,23 @@ interface GiftRecord {
 
 export default function Admin() {
   const { user, isAdmin } = useAuth();
+  const { t } = useTranslation();
+
+  // --- Admin Navigation (inside component so it can use t()) ---
+  const navItems = [
+    { id: 'overview', icon: BarChart3, label: t('admin.overview') },
+    { id: 'users', icon: Users, label: t('admin.users') },
+    { id: 'projects', icon: Server, label: t('admin.projects') },
+    { id: 'payments', icon: CreditCard, label: t('admin.payments') },
+    { id: 'discord-bot', icon: Bot, label: t('admin.discordBot') },
+    { id: 'coupons', icon: Ticket, label: t('admin.coupons') },
+    { id: 'gifts', icon: Gift, label: t('admin.gifts') },
+    { id: 'notifications', icon: MessageSquare, label: t('admin.notifications') },
+    { id: 'settings', icon: Settings, label: t('admin.settings') },
+    { id: 'plans-manage', icon: Crown, label: t('admin.managePlans') },
+    { id: 'logs', icon: Activity, label: t('admin.logs') },
+  ];
+
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -254,24 +257,24 @@ export default function Admin() {
   }, []);
 
   const handleCreateCoupon = async () => {
-    if (!couponCode.trim() || !couponValue) { toast.error('أكمل جميع الحقول'); return; }
+    if (!couponCode.trim() || !couponValue) { toast.error(t('admin.completeFields')); return; }
     const { error } = await supabase.from('coupons').insert({
       code: couponCode.trim().toUpperCase(),
       discount_type: couponType,
       discount_value: parseFloat(couponValue),
       max_uses: couponMaxUses ? parseInt(couponMaxUses) : null,
     });
-    if (error) { toast.error('خطأ: ' + error.message); return; }
-    toast.success('تم إنشاء كود الخصم!');
+    if (error) { toast.error(t('admin.errorWithMsg', { msg: error.message })); return; }
+    toast.success(t('admin.couponCreated'));
     setCouponCode(''); setCouponValue(''); setCouponMaxUses('');
     setShowCouponForm(false);
     loadCoupons();
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    if (!confirm('حذف كود الخصم؟')) return;
+    if (!confirm(t('admin.deleteConfirm'))) return;
     await supabase.from('coupons').delete().eq('id', id);
-    toast.success('تم الحذف');
+    toast.success(t('admin.deleted'));
     loadCoupons();
   };
 
@@ -295,7 +298,7 @@ export default function Admin() {
       if (!res.ok) {
         const errText = await res.text().catch(() => 'Unknown error');
         console.error('[Nova Bot Info] HTTP', res.status, errText);
-        throw new Error(`خطأ من السيرفر (${res.status}) - تحقق أن proxy يعمل على Railway`);
+        throw new Error(`Server error (${res.status}) - check that proxy is running on Railway`);
       }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -313,7 +316,7 @@ export default function Admin() {
       } catch (invErr) { console.warn('[Nova Invite] Failed:', invErr); }
     } catch (e: unknown) {
       console.error('[Nova Bot Info] Full error:', e);
-      toast.error(e instanceof Error ? e.message : 'فشل تحميل معلومات البوت');
+      toast.error(e instanceof Error ? e.message : t('admin.loadBotInfoFailed'));
     }
     setBotLoading(false);
   };
@@ -323,14 +326,14 @@ export default function Admin() {
       const res = await fetch(`${PROXY}/bot/guilds/${guildId}/channels`, botHeaders);
       if (!res.ok) {
         console.error('[Nova Channels] HTTP', res.status);
-        throw new Error(`فشل تحميل الرومات (${res.status})`);
+        throw new Error(t('admin.loadChannelsFailedWithCode', { code: res.status }));
       }
       const data = await res.json();
       console.log('[Nova Channels] OK:', data?.channels?.length, 'channels');
       setGuildChannels(data?.channels || []);
     } catch (e: unknown) {
       console.error('[Nova Channels] Full error:', e);
-      toast.error(e instanceof Error ? e.message : 'فشل تحميل الرومات');
+      toast.error(e instanceof Error ? e.message : t('admin.loadChannelsFailed'));
     }
   };
 
@@ -342,13 +345,13 @@ export default function Admin() {
       const data = await res.json();
       if (data.error === 'Missing Access') {
         setMissingAccessUrl(data.invite_url || '');
-        toast.error(data.detail || 'Missing Access — البوت يحتاج صلاحية applications.commands', { duration: 8000 });
+        toast.error(data.detail || 'Missing Access — bot needs applications.commands permission', { duration: 8000 });
       } else if (data.error) {
         throw new Error(data.error);
       } else {
-        toast.success(data.message || 'تم تسجيل الأوامر!');
+        toast.success(data.message || t('admin.registerCommandsSuccess'));
       }
-    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل تسجيل الأوامر'); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('admin.registerCommandsFailed')); }
     setBotLoading(false);
   };
 
@@ -366,11 +369,11 @@ export default function Admin() {
 
   const updateSetting = async (key: string, value: any) => {
     await supabase.from('settings').upsert({ key, value }, { onConflict: 'key' });
-    toast.success('تم تحديث الإعداد');
+    toast.success(t('admin.settingsUpdated'));
   };
 
   const handleSendGift = async () => {
-    if (!giftEmail.trim() || !giftPlanId) { toast.error('أكمل جميع الحقول'); return; }
+    if (!giftEmail.trim() || !giftPlanId) { toast.error(t('admin.completeFields')); return; }
     const plan = availablePlans.find(p => p.id === giftPlanId);
     const giftData = {
       id: crypto.randomUUID(),
@@ -388,7 +391,7 @@ export default function Admin() {
     try {
       const { error } = await supabase.from('gifts').insert(giftData);
       if (!error) {
-        toast.success('تم إرسال الهدية بنجاح!');
+        toast.success(t('admin.giftSentSuccess'));
         setGiftEmail(''); setGiftPlanId(''); setGiftMessage('');
         setShowGiftForm(false);
         loadGifts();
@@ -398,7 +401,7 @@ export default function Admin() {
 
     // Fallback: save to localStorage
     await saveGiftLocal(giftData);
-    toast.success('تم إرسال الهدية بنجاح!');
+    toast.success(t('admin.giftSentSuccess'));
     setGiftEmail(''); setGiftPlanId(''); setGiftMessage('');
     setShowGiftForm(false);
     loadGifts();
@@ -410,18 +413,18 @@ export default function Admin() {
   );
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
+    if (!confirm(t('admin.deleteUserConfirm'))) return;
     await supabase.from('profiles').delete().eq('id', userId);
     await supabase.from('projects').delete().eq('user_id', userId);
     await supabase.from('subscriptions').delete().eq('user_id', userId);
-    toast.success('تم حذف المستخدم');
+    toast.success(t('admin.userDeleted'));
     loadUsers();
     loadOverview();
   };
 
   const handleBanUser = async (userId: string) => {
     await supabase.from('user_roles').upsert({ user_id: userId, role: 'user' as const }, { onConflict: 'user_id' });
-    toast.success('تم حظر المستخدم');
+    toast.success(t('admin.userBanned'));
     loadUsers();
   };
 
@@ -463,7 +466,7 @@ export default function Admin() {
           {sidebarOpen && (
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-primary" />
-              <span className="text-xs font-bold text-primary">الأدمن</span>
+              <span className="text-xs font-bold text-primary">{t('admin.admin')}</span>
             </div>
           )}
           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -482,7 +485,7 @@ export default function Admin() {
             </div>
             {sidebarOpen && (
               <div className="min-w-0">
-                <p className="text-xs font-semibold truncate">المدير</p>
+                <p className="text-xs font-semibold truncate">{t('admin.manager')}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
               </div>
             )}
@@ -502,7 +505,7 @@ export default function Admin() {
             <SheetContent side="right" className="w-64 p-4">
               <SheetTitle className="flex items-center gap-2 mb-4">
                 <Shield className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold text-primary">لوحة الأدمن</span>
+                <span className="text-sm font-bold text-primary">{t('admin.adminPanel')}</span>
               </SheetTitle>
               <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
               <div className="border-t border-border/30 pt-3 mt-3">
@@ -511,7 +514,7 @@ export default function Admin() {
                     <Shield className="w-4 h-4 text-primary-foreground" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold truncate">المدير</p>
+                    <p className="text-xs font-semibold truncate">{t('admin.manager')}</p>
                     <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
                   </div>
                 </div>
@@ -519,7 +522,7 @@ export default function Admin() {
             </SheetContent>
           </Sheet>
           <span className="text-sm font-medium">
-            {navItems.find(n => n.id === activeTab)?.label || 'الأدمن'}
+            {navItems.find(n => n.id === activeTab)?.label || t('admin.admin')}
           </span>
         </div>
       </div>
@@ -530,13 +533,13 @@ export default function Admin() {
           {/* Overview */}
           {activeTab === 'overview' && (
             <motion.div key="overview" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">نظرة عامة</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">{t('admin.overview')}</h2>
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 {[
-                  { icon: Users, label: 'المستخدمين', value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
-                  { icon: Server, label: 'المشاريع', value: stats.projects, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/10' },
-                  { icon: CreditCard, label: 'اشتراكات فعالة', value: stats.subs, color: 'from-purple-500 to-pink-500', iconBg: 'bg-purple-500/10' },
-                  { icon: Activity, label: 'بوتات تعمل', value: stats.running, color: 'from-yellow-500 to-orange-500', iconBg: 'bg-yellow-500/10' },
+                  { icon: Users, label: t('admin.totalUsers'), value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
+                  { icon: Server, label: t('admin.totalProjects'), value: stats.projects, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/10' },
+                  { icon: CreditCard, label: t('admin.activeSubscriptions'), value: stats.subs, color: 'from-purple-500 to-pink-500', iconBg: 'bg-purple-500/10' },
+                  { icon: Activity, label: t('admin.runningBots'), value: stats.running, color: 'from-yellow-500 to-orange-500', iconBg: 'bg-yellow-500/10' },
                 ].map((s, i) => (
                   <motion.div
                     key={s.label}
@@ -563,17 +566,17 @@ export default function Admin() {
                   className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Layers className="w-4 h-4 text-primary" />
-                    <h3 className="font-bold">إجراءات سريعة</h3>
+                    <h3 className="font-bold">{t('admin.quickActions')}</h3>
                   </div>
                   <div className="space-y-2">
                     <Button variant="outline" className="w-full justify-start text-sm" onClick={() => { setActiveTab('gifts'); }}>
-                      <Gift className="w-4 h-4 ml-2" /> إرسال هدية باقة
+                      <Gift className="w-4 h-4 ml-2" /> {t('admin.sendGift')}
                     </Button>
                     <Button variant="outline" className="w-full justify-start text-sm" onClick={() => { setActiveTab('settings'); }}>
-                      <Wrench className="w-4 h-4 ml-2" /> إعدادات الموقع
+                      <Wrench className="w-4 h-4 ml-2" /> {t('admin.siteSettings')}
                     </Button>
                     <Button variant="outline" className="w-full justify-start text-sm" onClick={() => { setActiveTab('users'); }}>
-                      <Users className="w-4 h-4 ml-2" /> عرض المستخدمين
+                      <Users className="w-4 h-4 ml-2" /> {t('admin.viewUsers')}
                     </Button>
                   </div>
                 </motion.div>
@@ -582,12 +585,12 @@ export default function Admin() {
                   className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <ShieldCheck className="w-4 h-4 text-primary" />
-                    <h3 className="font-bold">حالة النظام</h3>
+                    <h3 className="font-bold">{t('admin.systemStatus')}</h3>
                   </div>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">الدفع</span><Badge className={paymentEnabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>{paymentEnabled ? 'مفعل' : 'معطل'}</Badge></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">الصيانة</span><Badge className={maintenanceMode ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}>{maintenanceMode ? 'مفعل' : 'معطل'}</Badge></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">اسم الموقع</span><span>{siteName}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.paymentStatus')}</span><Badge className={paymentEnabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>{paymentEnabled ? t('admin.active') : t('admin.inactive')}</Badge></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.maintenance')}</span><Badge className={maintenanceMode ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}>{maintenanceMode ? t('admin.active') : t('admin.inactive')}</Badge></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.siteName')}</span><span>{siteName}</span></div>
                   </div>
                 </motion.div>
 
@@ -595,12 +598,12 @@ export default function Admin() {
                   className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Database className="w-4 h-4 text-primary" />
-                    <h3 className="font-bold">قاعدة البيانات</h3>
+                    <h3 className="font-bold">{t('admin.database')}</h3>
                   </div>
                   <div className="space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">الجداول</span><span>8</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">الحالة</span><Badge className="bg-green-500/20 text-green-400">متصلة</Badge></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">النوع</span><span>Supabase</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.tables')}</span><span>8</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.status')}</span><Badge className="bg-green-500/20 text-green-400">{t('admin.connected')}</Badge></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.type')}</span><span>Supabase</span></div>
                   </div>
                 </motion.div>
               </div>
@@ -611,17 +614,17 @@ export default function Admin() {
           {activeTab === 'users' && (
             <motion.div key="users" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المستخدمين</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.users')}</h2>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{users.length} مستخدم</Badge>
-                  <Button size="sm" variant="outline" onClick={loadUsers}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                  <Badge variant="secondary">{users.length} {t('admin.user').toLowerCase()}</Badge>
+                  <Button size="sm" variant="outline" onClick={loadUsers}><Monitor className="w-4 h-4 ml-1" /> {t('admin.update')}</Button>
                 </div>
               </div>
 
               <div className="relative mb-4">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="بحث بالبريد أو الاسم..."
+                  placeholder={t('admin.search')}
                   value={usersSearch}
                   onChange={e => setUsersSearch(e.target.value)}
                   className="pr-10 bg-secondary/50"
@@ -636,13 +639,13 @@ export default function Admin() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/30">
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">المستخدم</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">البريد</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">المشاريع</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">الاشتراكات</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">الدور</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">تاريخ التسجيل</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">إجراءات</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.user')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.email')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.projectsCount')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.subsCount')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.role')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.registerDate')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.actions')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -659,7 +662,7 @@ export default function Admin() {
                                 <div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center flex-shrink-0">
                                   <UserIcon className="w-4 h-4 text-primary-foreground" />
                                 </div>
-                                <span className="font-medium truncate max-w-[120px]">{u.display_name || 'بدون اسم'}</span>
+                                <span className="font-medium truncate max-w-[120px]">{u.display_name || t('admin.withoutName')}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground truncate max-w-[180px]" dir="ltr">{u.email}</td>
@@ -667,16 +670,16 @@ export default function Admin() {
                             <td className="px-4 py-3 text-center"><Badge variant="secondary">{u.subscriptions_count}</Badge></td>
                             <td className="px-4 py-3 text-center">
                               <Badge className={u.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : u.role === 'banned' ? 'bg-red-500/20 text-red-400' : 'bg-muted'}>
-                                {u.role === 'admin' ? 'أدمن' : u.role === 'banned' ? 'محظور' : 'مستخدم'}
+                                {u.role === 'admin' ? t('admin.admin') : u.role === 'banned' ? t('admin.banned') : t('admin.user').toLowerCase()}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(u.created_at)}</td>
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-1">
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" onClick={() => handleDeleteUser(u.id)} title="حذف">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300" onClick={() => handleDeleteUser(u.id)} title={t('admin.deleteUser')}>
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-orange-400 hover:text-orange-300" onClick={() => handleBanUser(u.id)} title="حظر">
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-orange-400 hover:text-orange-300" onClick={() => handleBanUser(u.id)} title={t('admin.banUser')}>
                                   <Ban className="w-3.5 h-3.5" />
                                 </Button>
                               </div>
@@ -687,7 +690,7 @@ export default function Admin() {
                     </table>
                   </div>
                   {filteredUsers.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">لا يوجد مستخدمين</div>
+                    <div className="text-center py-12 text-muted-foreground">{t('admin.noUsers')}</div>
                   )}
                 </div>
               )}
@@ -698,10 +701,10 @@ export default function Admin() {
           {activeTab === 'projects' && (
             <motion.div key="projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المشاريع</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.projects')}</h2>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{projects.length} مشروع</Badge>
-                  <Button size="sm" variant="outline" onClick={loadProjects}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                  <Badge variant="secondary">{projects.length} {t('admin.totalProjects').toLowerCase()}</Badge>
+                  <Button size="sm" variant="outline" onClick={loadProjects}><Monitor className="w-4 h-4 ml-1" /> {t('admin.update')}</Button>
                 </div>
               </div>
 
@@ -713,11 +716,11 @@ export default function Admin() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border/30">
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">المشروع</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">المالك</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">اللغة</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">الحالة</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">تاريخ الإنشاء</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.totalProjects')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.owner')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.lang')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.statusCol')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.createDate')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -729,7 +732,7 @@ export default function Admin() {
                             <td className="px-4 py-3 text-center"><Badge variant="secondary">{p.language}</Badge></td>
                             <td className="px-4 py-3 text-center">
                               <Badge className={p.status === 'running' ? 'bg-green-500/20 text-green-400' : p.status === 'stopped' ? 'bg-gray-500/20 text-gray-400' : p.status === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}>
-                                {p.status === 'running' ? 'يعمل' : p.status === 'stopped' ? 'متوقف' : p.status === 'error' ? 'خطأ' : 'جاري النشر'}
+                                {p.status === 'running' ? t('admin.running') : p.status === 'stopped' ? t('admin.stopped') : p.status === 'error' ? t('admin.errorStatus') : t('admin.deploying')}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(p.created_at)}</td>
@@ -739,7 +742,7 @@ export default function Admin() {
                     </table>
                   </div>
                   {projects.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">لا يوجد مشاريع</div>
+                    <div className="text-center py-12 text-muted-foreground">{t('admin.noProjects')}</div>
                   )}
                 </div>
               )}
@@ -750,9 +753,9 @@ export default function Admin() {
           {activeTab === 'gifts' && (
             <motion.div key="gifts" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">إهداء الباقات</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.gifts')}</h2>
                 <Button className="gradient-bg text-primary-foreground" onClick={() => setShowGiftForm(true)}>
-                  <Gift className="w-4 h-4 ml-2" /> إرسال هدية
+                  <Gift className="w-4 h-4 ml-2" /> {t('admin.sendGiftBtn')}
                 </Button>
               </div>
 
@@ -760,26 +763,26 @@ export default function Admin() {
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                   className="glass rounded-xl p-5 mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> هدية جديدة</h3>
+                    <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> {t('admin.newGift')}</h3>
                     <Button size="sm" variant="ghost" onClick={() => setShowGiftForm(false)}><X className="w-4 h-4" /></Button>
                   </div>
                   <div className="space-y-3">
-                    <Input placeholder="بريد المستخدم المرسل إليه..." value={giftEmail} onChange={e => setGiftEmail(e.target.value)} dir="ltr" />
+                    <Input placeholder={t('admin.recipientEmail')} value={giftEmail} onChange={e => setGiftEmail(e.target.value)} dir="ltr" />
                     <div className="grid grid-cols-1 gap-3">
                       <select
                         value={giftPlanId}
                         onChange={e => setGiftPlanId(e.target.value)}
                         className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm"
                       >
-                        <option value="">اختر باقة</option>
+                        <option value="">{t('admin.selectPlan')}</option>
                         {availablePlans.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} - {p.price === 0 ? 'مجاني' : `$${p.price}`}</option>
+                          <option key={p.id} value={p.id}>{p.name} - {p.price === 0 ? t('admin.freePlan') : `$${p.price}`}</option>
                         ))}
                       </select>
                     </div>
-                    <Input placeholder="رسالة اختيارية..." value={giftMessage} onChange={e => setGiftMessage(e.target.value)} />
+                    <Input placeholder={t('admin.optionalMessage')} value={giftMessage} onChange={e => setGiftMessage(e.target.value)} />
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={handleSendGift}>
-                      <Send className="w-4 h-4 ml-2" /> إرسال الهدية
+                      <Send className="w-4 h-4 ml-2" /> {t('admin.sendGiftBtn2')}
                     </Button>
                   </div>
                 </motion.div>
@@ -797,20 +800,20 @@ export default function Admin() {
                           <Gift className="w-5 h-5 text-purple-400" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium truncate">هدية {g.plan_name}</p>
+                          <p className="font-medium truncate">{t('admin.giftOf')} {g.plan_name}</p>
                           <p className="text-xs text-muted-foreground truncate" dir="ltr">{g.to_email}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-xs text-muted-foreground">{formatDate(g.created_at)}</span>
                         <Badge className={g.claimed ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}>
-                          {g.claimed ? 'تم الاستلام' : 'بالانتظار'}
+                          {g.claimed ? t('admin.claimed') : t('admin.waiting')}
                         </Badge>
                       </div>
                     </motion.div>
                   ))}
                   {gifts.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground"><Gift className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>لا يوجد هدايا بعد</p></div>
+                    <div className="text-center py-12 text-muted-foreground"><Gift className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>{t('admin.noGifts')}</p></div>
                   )}
                 </div>
               )}
@@ -820,7 +823,7 @@ export default function Admin() {
           {/* Settings */}
           {activeTab === 'settings' && (
             <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">إعدادات الموقع</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">{t('admin.settings')}</h2>
 
               <div className="space-y-4">
                 {/* Maintenance Mode */}
@@ -832,13 +835,13 @@ export default function Admin() {
                         <Wrench className="w-5 h-5 text-orange-400" />
                       </div>
                       <div>
-                        <p className="font-bold">وضع الصيانة</p>
-                        <p className="text-sm text-muted-foreground">عند التفعيل، فقط الأدمن يقدر يدخل الموقع</p>
+                        <p className="font-bold">{t('admin.maintenanceMode')}</p>
+                        <p className="text-sm text-muted-foreground">{t('admin.maintenanceDesc')}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge className={maintenanceMode ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}>
-                        {maintenanceMode ? 'مفعل' : 'معطل'}
+                        {maintenanceMode ? t('admin.active') : t('admin.inactive')}
                       </Badge>
                       <Switch checked={maintenanceMode} onCheckedChange={v => { setMaintenanceMode(v); updateSetting('maintenance_mode', v); }} />
                     </div>
@@ -854,13 +857,13 @@ export default function Admin() {
                         <CreditCard className="w-5 h-5 text-green-400" />
                       </div>
                       <div>
-                        <p className="font-bold">تفعيل الدفع</p>
-                        <p className="text-sm text-muted-foreground">عند التعطيل، جميع الباقات مجانية</p>
+                        <p className="font-bold">{t('admin.enablePayment')}</p>
+                        <p className="text-sm text-muted-foreground">{t('admin.enablePaymentDesc')}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge className={paymentEnabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                        {paymentEnabled ? 'مفعل' : 'معطل'}
+                        {paymentEnabled ? t('admin.active') : t('admin.inactive')}
                       </Badge>
                       <Switch checked={paymentEnabled} onCheckedChange={v => { setPaymentEnabled(v); updateSetting('payment_enabled', v); }} />
                     </div>
@@ -875,8 +878,8 @@ export default function Admin() {
                       <Zap className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="font-bold">اسم الموقع</p>
-                      <p className="text-sm text-muted-foreground">الاسم اللي يظهر في المتصفح</p>
+                      <p className="font-bold">{t('admin.siteName')}</p>
+                      <p className="text-sm text-muted-foreground">{t('admin.siteNameDesc')}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -895,23 +898,23 @@ export default function Admin() {
                       <Shield className="w-5 h-5 text-red-400" />
                     </div>
                     <div>
-                      <p className="font-bold text-red-400">منطقة الخطر</p>
-                      <p className="text-sm text-muted-foreground">إجراءات لا يمكن التراجع عنها</p>
+                      <p className="font-bold text-red-400">{t('admin.dangerZone')}</p>
+                      <p className="text-sm text-muted-foreground">{t('admin.dangerZoneDesc')}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Button variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={async () => {
-                      if (!confirm('هل أنت متأكد؟ سيتم حذف جميع الاشتراكات المنتهية!')) return;
+                      if (!confirm(t('admin.deleteExpiredConfirm'))) return;
                       const { data: expired } = await supabase.from('subscriptions').select('id').lt('expires_at', new Date().toISOString()).eq('status', 'active');
                       if (expired && expired.length > 0) {
                         await supabase.from('subscriptions').delete().in('id', expired.map(e => e.id));
-                        toast.success(`تم حذف ${expired.length} اشتراك منتهي`);
+                        toast.success(t('admin.deletedExpired', { count: expired.length }));
                         loadOverview();
                       } else {
-                        toast.info('لا يوجد اشتراكات منتهية');
+                        toast.info(t('admin.noExpiredSubs'));
                       }
                     }}>
-                      <Trash2 className="w-4 h-4 ml-2" /> حذف الاشتراكات المنتهية
+                      <Trash2 className="w-4 h-4 ml-2" /> {t('admin.deleteExpired')}
                     </Button>
                   </div>
                 </motion.div>
@@ -922,7 +925,7 @@ export default function Admin() {
           {/* Plans Manage */}
           {activeTab === 'plans-manage' && (
             <motion.div key="plans-manage" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">إدارة الباقات</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">{t('admin.managePlans')}</h2>
 
               {/* Coins System Notice */}
               <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
@@ -932,15 +935,15 @@ export default function Admin() {
                     <Star className="w-5 h-5 text-yellow-400" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-yellow-400 mb-1">نظام الكوينزات</h3>
+                    <h3 className="font-bold text-yellow-400 mb-1">{t('admin.coinsSystem')}</h3>
                     <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>يتوفر نظام دفع بالكوينزات كبديل للدفع بالدولار.</p>
+                      <p>{t('admin.coinsSystemDesc')}</p>
                       <div className="flex flex-wrap gap-3 mt-2">
                         <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                          أقل باقة بـ <span className="font-bold">75</span> كوينز
+                          {t('admin.lowestPlanCoins')} <span className="font-bold">75</span> {t('admin.coins')}
                         </Badge>
                         <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                          سعر <span className="font-bold">100</span> كوينز = <span className="font-bold">15m</span>
+                          {t('admin.coinsPrice')} <span className="font-bold">100</span> {t('admin.coinsPriceEquals')} <span className="font-bold">15m</span>
                         </Badge>
                       </div>
                     </div>
@@ -960,12 +963,12 @@ export default function Admin() {
                       <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>
                     )}
                     <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                      <div className="flex justify-between"><span>السعر</span><span className="text-foreground font-semibold">{plan.price === 0 ? 'مجاني' : `$${plan.price}/شهر`}</span></div>
-                      <div className="flex justify-between"><span>التخزين</span><span>{plan.storage_mb >= 1024 ? `${plan.storage_mb / 1024}GB` : `${plan.storage_mb}MB`}</span></div>
-                      <div className="flex justify-between"><span>الرام</span><span>{plan.ram_mb >= 1024 ? `${plan.ram_mb / 1024}GB` : `${plan.ram_mb}MB`}</span></div>
-                      <div className="flex justify-between"><span>المعالج</span><span>{plan.cpu_cores} نواة</span></div>
+                      <div className="flex justify-between"><span>{t('admin.price')}</span><span className="text-foreground font-semibold">{plan.price === 0 ? t('admin.freePlan') : `$${plan.price}/${t('admin.month')}`}</span></div>
+                      <div className="flex justify-between"><span>{t('admin.storage')}</span><span>{plan.storage_mb >= 1024 ? `${plan.storage_mb / 1024}GB` : `${plan.storage_mb}MB`}</span></div>
+                      <div className="flex justify-between"><span>{t('admin.ram')}</span><span>{plan.ram_mb >= 1024 ? `${plan.ram_mb / 1024}GB` : `${plan.ram_mb}MB`}</span></div>
+                      <div className="flex justify-between"><span>{t('admin.processor')}</span><span>{plan.cpu_cores} {t('admin.core')}</span></div>
                     </div>
-                    <Badge variant="secondary" className="text-xs">{plan.is_free ? 'باقة تجريبية' : 'باقة مدفوعة'}</Badge>
+                    <Badge variant="secondary" className="text-xs">{plan.is_free ? t('admin.planTrial') : t('admin.planPaid')}</Badge>
                   </motion.div>
                 ))}
               </div>
@@ -975,19 +978,19 @@ export default function Admin() {
           {/* Discord Bot */}
           {activeTab === 'discord-bot' && (
             <motion.div key="discord-bot" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">بوت ديسكورد</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">{t('admin.discordBot')}</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* Bot Info */}
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Bot className="w-5 h-5 text-primary" />
-                    <h3 className="font-bold">معلومات البوت</h3>
+                    <h3 className="font-bold">{t('admin.botInfo')}</h3>
                   </div>
                   {botInfo ? (
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-muted-foreground">الاسم</span><span className="font-bold">{botInfo.bot?.username}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">السيرفرات</span><Badge variant="secondary">{botInfo.guilds_count}</Badge></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.botNameLabel')}</span><span className="font-bold">{botInfo.bot?.username}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">{t('admin.guilds')}</span><Badge variant="secondary">{botInfo.guilds_count}</Badge></div>
                       {botInfo.guilds?.map((g: any) => (
                         <button key={g.id} onClick={() => { setSelectedGuild(g.id); loadChannels(g.id); }}
                           className={`w-full text-right p-2 rounded-lg transition-colors text-sm ${selectedGuild === g.id ? 'bg-primary/15 text-primary' : 'hover:bg-secondary/50'}`}>
@@ -998,7 +1001,7 @@ export default function Admin() {
                   ) : (
                     <Button variant="outline" className="w-full" onClick={loadBotInfo} disabled={botLoading}>
                       {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Monitor className="w-4 h-4 ml-2" />}
-                      تحميل معلومات البوت
+                      {t('admin.loadBotInfo')}
                     </Button>
                   )}
                 </motion.div>
@@ -1007,34 +1010,34 @@ export default function Admin() {
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="glass rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <MessageSquare className="w-5 h-5 text-primary" />
-                    <h3 className="font-bold">الأوامر</h3>
+                    <h3 className="font-bold">{t('admin.commands')}</h3>
                   </div>
                   <div className="space-y-2 text-sm mb-4">
-                    <p className="text-xs font-semibold text-primary mb-1">📋 أوامر عامة</p>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/help</code> - عرض الأوامر</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/prices</code> - إرسال الأسعار</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/serverinfo</code> - معلومات السيرفر</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/user</code> - معلومات مستخدم</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/avatar</code> - صورة بروفايل</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/stats</code> - إحصائيات Nova</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/ping</code> - سرعة البوت</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/invite</code> - رابط دعوة البوت</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/poll</code> - إنشاء تصويت</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - إرسال إعلان</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - حالة الخدمة</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/uptime</code> - مدة التشغيل</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/roles</code> - قائمة الرتب</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/emoji-info</code> - معلومات الإيموجي</div>
-                    <div className="p-2 rounded-lg bg-secondary/30"><code>/banner</code> - بانر السيرفر</div>
-                    <p className="text-xs font-semibold text-green-400 mt-3 mb-1">🌐 أوامر الموقع</p>
-                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/site-check</code> - فحص خدمات الموقع (حقيقي)</div>
-                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/top-servers</code> - أفضل المشاريع النشطة</div>
-                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/plans-detail</code> - تفاصيل الباقات والمقارنة</div>
-                    <p className="text-xs font-semibold text-orange-500/70 mt-3 mb-1">تذاكر وأدمن</p>
-                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/lookup</code> - بحث مستخدم (أدمن)</div>
-                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/recent-payments</code> - آخر المدفوعات (أدمن)</div>
-                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/set-status-channel</code> - تعيين روم الحالة (أدمن)</div>
-                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/send-ticket-panel</code> - ارسال بانل التذاكر</div>
+                    <p className="text-xs font-semibold text-primary mb-1">📋 {t('admin.commandGeneral')}</p>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/help</code> - {t('admin.commandHelp')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/prices</code> - {t('admin.sendPrices')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/serverinfo</code> - {t('admin.commandServerInfo')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/user</code> - {t('admin.commandUserInfo')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/avatar</code> - {t('admin.commandAvatar')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/stats</code> - {t('admin.commandStats')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/ping</code> - {t('admin.commandPing')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/invite</code> - {t('admin.commandInvite')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/poll</code> - {t('admin.commandPoll')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/announce</code> - {t('admin.sendAnnouncement')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/status</code> - {t('admin.commandStatus')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/uptime</code> - {t('admin.commandUptime')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/roles</code> - {t('admin.commandRoles')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/emoji-info</code> - {t('admin.commandEmojiInfo')}</div>
+                    <div className="p-2 rounded-lg bg-secondary/30"><code>/banner</code> - {t('admin.commandBanner')}</div>
+                    <p className="text-xs font-semibold text-green-400 mt-3 mb-1">🌐 {t('admin.commandSiteCommands')}</p>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/site-check</code> - {t('admin.commandSiteCheck')}</div>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/top-servers</code> - {t('admin.commandTopServers')}</div>
+                    <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20"><code>/plans-detail</code> - {t('admin.commandPlansDetail')}</div>
+                    <p className="text-xs font-semibold text-orange-500/70 mt-3 mb-1">{t('admin.commandTicketsAdmin')}</p>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/lookup</code> - {t('admin.commandLookup')}</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/recent-payments</code> - {t('admin.commandRecentPayments')}</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/set-status-channel</code> - {t('admin.commandSetStatusChannel')}</div>
+                    <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20"><code>/send-ticket-panel</code> - {t('admin.commandSendTicketPanel')}</div>
                   </div>
                   <div className="space-y-2">
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
@@ -1045,38 +1048,38 @@ export default function Admin() {
                         const data = await res.json();
                         if (data.error === 'Missing Access') {
                           setMissingAccessUrl(data.invite_url || '');
-                          toast.error(data.detail || 'Missing Access — البوت يحتاج صلاحية applications.commands', { duration: 8000 });
+                          toast.error(data.detail || 'Missing Access — bot needs applications.commands permission', { duration: 8000 });
                         } else if (data.error) {
                           throw new Error(data.error);
                         } else {
-                          toast.success(data.message || 'تم إعداد البوت!');
+                          toast.success(data.message || t('admin.botSetupSuccess'));
                           loadBotInfo();
                         }
-                      } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإعداد'); }
+                      } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('admin.botSetupFailed')); }
                       setBotLoading(false);
                     }} disabled={botLoading}>
                       {botLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : <Zap className="w-4 h-4 ml-2" />}
-                      إعداد تلقائي (تسجيل أوامر + رابط Discord)
+                      {t('admin.autoSetup')}
                     </Button>
                     <Button variant="outline" className="w-full" onClick={registerCommands} disabled={botLoading}>
                       <MessageSquare className="w-4 h-4 ml-2" />
-                      تسجيل الأوامر فقط
+                      {t('admin.registerOnly')}
                     </Button>
                     {missingAccessUrl && (
                       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                         className="mt-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-3">
                         <div className="flex items-center gap-2 text-red-400">
                           <Ban className="w-5 h-5 flex-shrink-0" />
-                          <p className="text-sm font-bold">البوت يحتاج إعادة دعوة مع صلاحية commands</p>
+                          <p className="text-sm font-bold">{t('admin.botNeedsReinvite')}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">البوت حالياً لا يملك صلاحية <code className="text-red-400">applications.commands</code> في السيرفر. اضغط الزر أدناه لإعادة دعوة البوت مع الصلاحية المطلوبة:</p>
+                        <p className="text-xs text-muted-foreground">{t('admin.botNeedsReinviteDesc')} <code className="text-red-400">applications.commands</code></p>
                         <a href={missingAccessUrl || botInviteUrl} target="_blank" rel="noopener noreferrer">
                           <Button className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30">
                             <Zap className="w-4 h-4 ml-2" />
-                            إعادة دعوة البوت (مع applications.commands)
+                            {t('admin.reinviteBot')}
                           </Button>
                         </a>
-                        <p className="text-[10px] text-muted-foreground text-center">بعد الدعوة، اضغط "تسجيل الأوامر" مرة أخرى</p>
+                        <p className="text-[10px] text-muted-foreground text-center">{t('admin.afterInvite')}</p>
                       </motion.div>
                     )}
                   </div>
@@ -1086,12 +1089,12 @@ export default function Admin() {
               {/* Quick Actions */}
               {selectedGuild && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-5 mb-4">
-                  <h3 className="font-bold mb-4 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> إجراءات سريعة</h3>
+                  <h3 className="font-bold mb-4 flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> {t('admin.quickActions')}</h3>
                   <div className="space-y-3">
                     <div className="flex gap-2">
                       <select value={selectedChannel} onChange={e => setSelectedChannel(e.target.value)}
                         className="flex-1 h-9 rounded-md border border-border bg-secondary px-3 text-sm">
-                        <option value="">اختر روم...</option>
+                        <option value="">{t('admin.selectChannel')}...</option>
                         {guildChannels.map(ch => (
                           <option key={ch.id} value={ch.id}>#{ch.name}</option>
                         ))}
@@ -1105,11 +1108,11 @@ export default function Admin() {
                             const res = await fetch(`${PROXY}/bot/send-prices`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
-                            toast.success('تم إرسال الأسعار!');
-                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
+                            toast.success(t('admin.pricesSent'));
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('admin.sendFailed')); }
                           setBotLoading(false);
                         }}>
-                        <CreditCard className="w-4 h-4 ml-1" /> إرسال الأسعار
+                        <CreditCard className="w-4 h-4 ml-1" /> {t('admin.sendPrices')}
                       </Button>
                       <Button variant="outline" className="flex-1" disabled={!selectedChannel || botLoading}
                         onClick={async () => {
@@ -1118,15 +1121,15 @@ export default function Admin() {
                             const res = await fetch(`${PROXY}/bot/send-ticket-panel`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
-                            toast.success('تم ارسال بانل التذاكر!');
-                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
+                            toast.success(t('admin.ticketPanelSent'));
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('admin.sendFailed')); }
                           setBotLoading(false);
                         }}>
-                        <Ticket className="w-4 h-4 ml-1" /> ارسال بانل التيكيت
+                        <Ticket className="w-4 h-4 ml-1" /> {t('admin.sendTicketPanelBtn')}
                       </Button>
                     </div>
                     <div className="flex gap-2">
-                      <Input placeholder="نص الإعلان..." value={announceMsg} onChange={e => setAnnounceMsg(e.target.value)} />
+                      <Input placeholder={t('admin.announcePlaceholder')} value={announceMsg} onChange={e => setAnnounceMsg(e.target.value)} />
                       <Button className="gradient-bg text-primary-foreground" disabled={!selectedChannel || !announceMsg.trim() || botLoading}
                         onClick={async () => {
                           setBotLoading(true);
@@ -1134,9 +1137,9 @@ export default function Admin() {
                             const res = await fetch(`${PROXY}/bot/announce`, { ...botHeadersPost, method: 'POST', body: JSON.stringify({ channel_id: selectedChannel, message: announceMsg }) });
                             const data = await res.json();
                             if (data.error) throw new Error(data.error);
-                            toast.success('تم إرسال الإعلان!');
+                            toast.success(t('admin.announcementSent'));
                             setAnnounceMsg('');
-                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'فشل الإرسال'); }
+                          } catch (e: unknown) { toast.error(e instanceof Error ? e.message : t('admin.sendFailed')); }
                           setBotLoading(false);
                         }}>
                         <Send className="w-4 h-4" />
@@ -1152,9 +1155,9 @@ export default function Admin() {
           {activeTab === 'coupons' && (
             <motion.div key="coupons" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">أكواد الخصم</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.coupons')}</h2>
                 <Button className="gradient-bg text-primary-foreground" onClick={() => setShowCouponForm(true)}>
-                  <Plus className="w-4 h-4 ml-2" /> إضافة كود
+                  <Plus className="w-4 h-4 ml-2" /> {t('admin.addCode')}
                 </Button>
               </div>
 
@@ -1162,22 +1165,22 @@ export default function Admin() {
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                   className="glass rounded-xl p-5 mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> كود خصم جديد</h3>
+                    <h3 className="font-bold flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> {t('admin.newCoupon')}</h3>
                     <Button size="sm" variant="ghost" onClick={() => setShowCouponForm(false)}><X className="w-4 h-4" /></Button>
                   </div>
                   <div className="space-y-3">
-                    <Input placeholder="كود الخصم (مثل: NOVA50)" value={couponCode} onChange={e => setCouponCode(e.target.value)} dir="ltr" />
+                    <Input placeholder={t('admin.couponCodePlaceholder')} value={couponCode} onChange={e => setCouponCode(e.target.value)} dir="ltr" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <select value={couponType} onChange={e => setCouponType(e.target.value as 'percentage' | 'fixed')}
                         className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm">
-                        <option value="percentage">نسبة مئوية (%)</option>
-                        <option value="fixed">مبلغ ثابت ($)</option>
+                        <option value="percentage">{t('admin.percentage')} (%)</option>
+                        <option value="fixed">{t('admin.fixed')} ($)</option>
                       </select>
-                      <Input type="number" placeholder={couponType === 'percentage' ? 'النسبة (مثل: 50)' : 'المبلغ (مثل: 2)'} value={couponValue} onChange={e => setCouponValue(e.target.value)} dir="ltr" />
+                      <Input type="number" placeholder={couponType === 'percentage' ? t('admin.couponTypePlaceholder') : t('admin.couponFixedPlaceholder')} value={couponValue} onChange={e => setCouponValue(e.target.value)} dir="ltr" />
                     </div>
-                    <Input type="number" placeholder="الحد الأقصى للاستخدام (اتركه فارغ = غير محدود)" value={couponMaxUses} onChange={e => setCouponMaxUses(e.target.value)} dir="ltr" />
+                    <Input type="number" placeholder={t('admin.maxUsesPlaceholder')} value={couponMaxUses} onChange={e => setCouponMaxUses(e.target.value)} dir="ltr" />
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={handleCreateCoupon}>
-                      <Check className="w-4 h-4 ml-2" /> إنشاء الكود
+                      <Check className="w-4 h-4 ml-2" /> {t('admin.createCode')}
                     </Button>
                   </div>
                 </motion.div>
@@ -1197,14 +1200,14 @@ export default function Admin() {
                         <div>
                           <p className="font-mono font-bold text-lg">{c.code}</p>
                           <p className="text-xs text-muted-foreground">
-                            خصم {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}
-                            {' · '} استخدم {c.current_uses} مرة {c.max_uses ? `من ${c.max_uses}` : '(غير محدود)'}
+                            {t('admin.discount')} {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}
+                            {' · '}{t('admin.usedTimes', { count: c.current_uses })} {c.max_uses ? t('admin.fromCount', { max: c.max_uses }) : t('admin.unlimited')}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge className={c.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
-                          {c.is_active ? 'مفعل' : 'معطل'}
+                          {c.is_active ? t('admin.active') : t('admin.inactive')}
                         </Badge>
                         <Switch checked={c.is_active} onCheckedChange={() => handleToggleCoupon(c.id, c.is_active)} />
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400" onClick={() => handleDeleteCoupon(c.id)}>
@@ -1214,7 +1217,7 @@ export default function Admin() {
                     </motion.div>
                   ))}
                   {coupons.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground"><Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>لا يوجد أكواد خصم</p></div>
+                    <div className="text-center py-12 text-muted-foreground"><Ticket className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>{t('admin.noCoupons')}</p></div>
                   )}
                 </div>
               )}
@@ -1225,10 +1228,10 @@ export default function Admin() {
           {activeTab === 'payments' && (
             <motion.div key="payments" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">المدفوعات</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.payments')}</h2>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{payments.length} عملية</Badge>
-                  <Button size="sm" variant="outline" onClick={loadPayments}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                  <Badge variant="secondary">{payments.length} {t('admin.transaction')}</Badge>
+                  <Button size="sm" variant="outline" onClick={loadPayments}><Monitor className="w-4 h-4 ml-1" /> {t('admin.update')}</Button>
                 </div>
               </div>
 
@@ -1241,11 +1244,11 @@ export default function Admin() {
                       <thead>
                         <tr className="border-b border-border/30">
                           <th className="px-4 py-3 text-right text-muted-foreground font-semibold">#</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">المبلغ</th>
-                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">الحالة</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">العملة</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">رقم الطلب</th>
-                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">التاريخ</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.amount')}</th>
+                          <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.status')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.currency')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.orderId')}</th>
+                          <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.date')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1255,7 +1258,7 @@ export default function Admin() {
                             <td className="px-4 py-3 font-semibold">${p.amount || p.fiat_amount || '0.00'}</td>
                             <td className="px-4 py-3 text-center">
                               <Badge className={p.status === 'paid' || p.status === 'completed' ? 'bg-green-500/20 text-green-400' : p.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}>
-                                {p.status === 'paid' || p.status === 'completed' ? 'مكتمل' : p.status === 'pending' ? 'قيد الانتظار' : p.status === 'cancelled' ? 'ملغي' : p.status || 'غير معروف'}
+                                {p.status === 'paid' || p.status === 'completed' ? t('admin.completed') : p.status === 'pending' ? t('admin.pending') : p.status === 'cancelled' ? t('admin.cancelled') : p.status || t('admin.unknown')}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">{p.currency || 'USD'}</td>
@@ -1270,8 +1273,8 @@ export default function Admin() {
               ) : (
                 <div className="glass rounded-xl p-8 text-center text-muted-foreground">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>لا يوجد مدفوعات بعد</p>
-                  <p className="text-sm mt-1">ستظهر عمليات الدفع هنا تلقائياً</p>
+                  <p>{t('admin.noPayments')}</p>
+                  <p className="text-sm mt-1">{t('admin.paymentsWillAppear')}</p>
                 </div>
               )}
             </motion.div>
@@ -1281,9 +1284,9 @@ export default function Admin() {
           {activeTab === 'notifications' && (
             <motion.div key="notifications" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">الإعلانات والإشعارات</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.notifAndAnnouncements')}</h2>
                 <Button className="gradient-bg text-primary-foreground" onClick={() => setShowNotifForm(true)}>
-                  <Plus className="w-4 h-4 ml-2" /> إعلان جديد
+                  <Plus className="w-4 h-4 ml-2" /> {t('admin.notifNew')}
                 </Button>
               </div>
 
@@ -1291,12 +1294,12 @@ export default function Admin() {
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
                   className="glass rounded-xl p-5 mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> إعلان جديد</h3>
+                    <h3 className="font-bold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> {t('admin.notifNew')}</h3>
                     <Button size="sm" variant="ghost" onClick={() => setShowNotifForm(false)}><X className="w-4 h-4" /></Button>
                   </div>
                   <div className="space-y-3">
                     <textarea
-                      placeholder="نص الإعلان أو الإشعار..."
+                      placeholder={t('admin.notifPlaceholder')}
                       value={notifMessage}
                       onChange={e => setNotifMessage(e.target.value)}
                       className="w-full h-24 rounded-md border border-border bg-secondary px-3 py-2 text-sm resize-none"
@@ -1304,27 +1307,27 @@ export default function Admin() {
                     <div className="flex gap-2">
                       <select value={notifType} onChange={e => setNotifType(e.target.value as 'info' | 'warning' | 'success')}
                         className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm">
-                        <option value="info">معلومة</option>
-                        <option value="warning">تحذير</option>
-                        <option value="success">نجاح</option>
+                        <option value="info">{t('admin.info')}</option>
+                        <option value="warning">{t('admin.warning')}</option>
+                        <option value="success">{t('admin.success')}</option>
                       </select>
                     </div>
                     <Button className="w-full gradient-bg text-primary-foreground" onClick={async () => {
-                      if (!notifMessage.trim()) { toast.error('أدخل نص الإعلان'); return; }
+                      if (!notifMessage.trim()) { toast.error(t('admin.enterNotifText')); return; }
                       try {
                         await (supabase as any).from('notifications').insert({
                           message: notifMessage.trim(),
                           type: notifType,
                           active: true,
                         });
-                        toast.success('تم إنشاء الإعلان!');
+                        toast.success(t('admin.notifCreated'));
                         setNotifMessage(''); setShowNotifForm(false);
                         loadNotifications();
                       } catch (e: unknown) {
-                        toast.error('خطأ في إنشاء الإعلان');
+                        toast.error(t('admin.notifCreateError'));
                       }
                     }}>
-                      <Send className="w-4 h-4 ml-2" /> نشر الإعلان
+                      <Send className="w-4 h-4 ml-2" /> {t('admin.publishNotif')}
                     </Button>
                   </div>
                 </motion.div>
@@ -1348,7 +1351,7 @@ export default function Admin() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Badge className={n.type === 'success' ? 'bg-green-500/20 text-green-400' : n.type === 'warning' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}>
-                          {n.type === 'success' ? 'نجاح' : n.type === 'warning' ? 'تحذير' : 'معلومة'}
+                          {n.type === 'success' ? t('admin.success') : n.type === 'warning' ? t('admin.warning') : t('admin.info')}
                         </Badge>
                         <Switch checked={n.active} onCheckedChange={async () => {
                           await (supabase as any).from('notifications').update({ active: !n.active }).eq('id', n.id);
@@ -1360,7 +1363,7 @@ export default function Admin() {
                   {notifications.length === 0 && (
                     <div className="text-center py-12 text-muted-foreground">
                       <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                      <p>لا يوجد إعلانات بعد</p>
+                      <p>{t('admin.noNotifs')}</p>
                     </div>
                   )}
                 </div>
@@ -1372,10 +1375,10 @@ export default function Admin() {
           {activeTab === 'logs' && (
             <motion.div key="logs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold gradient-text">سجل النشاط</h2>
+                <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.logs')}</h2>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{logs.length} نشاط</Badge>
-                  <Button size="sm" variant="outline" onClick={loadLogs}><Monitor className="w-4 h-4 ml-1" /> تحديث</Button>
+                  <Badge variant="secondary">{logs.length} {t('admin.activity')}</Badge>
+                  <Button size="sm" variant="outline" onClick={loadLogs}><Monitor className="w-4 h-4 ml-1" /> {t('admin.update')}</Button>
                 </div>
               </div>
 
@@ -1401,7 +1404,7 @@ export default function Admin() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{log.description || log.action_type}</p>
                         <p className="text-xs text-muted-foreground">
-                          {log.user_email || log.user_id?.substring(0, 8) || 'النظام'}
+                          {log.user_email || log.user_id?.substring(0, 8) || t('admin.system')}
                         </p>
                       </div>
                       <span className="text-xs text-muted-foreground flex-shrink-0">{formatDate(log.created_at)}</span>
@@ -1411,8 +1414,8 @@ export default function Admin() {
               ) : (
                 <div className="glass rounded-xl p-8 text-center text-muted-foreground">
                   <Activity className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>لا يوجد نشاطات مسجلة بعد</p>
-                  <p className="text-sm mt-1">ستظهر الأنشطة هنا تلقائياً</p>
+                  <p>{t('admin.noActivities')}</p>
+                  <p className="text-sm mt-1">{t('admin.activitiesWillAppear')}</p>
                 </div>
               )}
             </motion.div>

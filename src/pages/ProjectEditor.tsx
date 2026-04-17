@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -174,6 +175,7 @@ export default function ProjectEditor() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [project, setProject] = useState<Project | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<ProjectFile | null>(null);
@@ -196,7 +198,7 @@ export default function ProjectEditor() {
   const [isDraggingConsole, setIsDraggingConsole] = useState(false);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
-  const [planLimits, setPlanLimits] = useState<PlanLimits>({ storage_mb: 512, max_projects: 1, plan_name: 'مجاني' });
+  const [planLimits, setPlanLimits] = useState<PlanLimits>({ storage_mb: 512, max_projects: 1, plan_name: '' });
   const terminalPanelRef = useRef<any>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -234,7 +236,7 @@ export default function ProjectEditor() {
       setProjectName(data.name);
     } else {
       // Project not found or doesn't belong to user
-      toast.error('المشروع غير موجود');
+      toast.error(t('editor.projectNotFound'));
       navigate('/dashboard');
     }
   };
@@ -287,16 +289,16 @@ export default function ProjectEditor() {
     const totalAfterSave = otherFilesSize + newSize;
     const limitBytes = planLimits.storage_mb * 1024 * 1024;
     if (totalAfterSave > limitBytes) {
-      toast.error(`تجاوزت حد التخزين! (${formatBytes(totalAfterSave)} / ${formatBytes(limitBytes)})`);
+      toast.error(t('editor.storageExceeded', { used: formatBytes(totalAfterSave), limit: formatBytes(limitBytes) }));
       return;
     }
     const { error } = await supabase
       .from('project_files')
       .update({ content: editorContent })
       .eq('id', selectedFile.id);
-    if (error) toast.error('خطأ في الحفظ');
+    if (error) toast.error(t('editor.saveError'));
     else {
-      toast.success('تم الحفظ');
+      toast.success(t('editor.saved'));
       setHasUnsaved(false);
       setFiles(prev => prev.map(f => f.id === selectedFile.id ? { ...f, content: editorContent } : f));
       setSelectedFile(prev => prev ? { ...prev, content: editorContent } : null);
@@ -323,27 +325,27 @@ export default function ProjectEditor() {
         const data = await res.json();
 
         if (data.status === 'DELETED') {
-          addLog('error', 'السيرفيس تم حذفه من Railway');
+          addLog('error', t('editor.serviceDeleted'));
           return 'CRASHED';
         }
 
         if (data.status === 'SUCCESS') {
           setDeployProgress(100);
-          addLog('success', 'تم تشغيل البوت بنجاح!');
+          addLog('success', t('editor.deploySuccess'));
           if (data.logs?.length) {
             for (const l of data.logs) {
               if (l.severity === 'error') addLog('error', l.message);
               else addLog('info', l.message);
             }
           }
-          addLog('info', 'البوت جاهز للاستخدام في Discord');
+          addLog('info', t('editor.botReady'));
           return 'SUCCESS';
         }
 
         if (data.status === 'CRASHED') {
-          addLog('error', 'فشل تشغيل البوت');
+          addLog('error', t('editor.deployFailed'));
           if (data.logs?.length) {
-            addLog('info', 'تفاصيل الخطأ:');
+            addLog('info', t('editor.errorDetails'));
             for (const l of data.logs) {
               addLog(l.severity === 'error' ? 'error' : 'warning', `  ${l.message}`);
             }
@@ -352,7 +354,7 @@ export default function ProjectEditor() {
         }
 
         if (data.status === 'BUILDING' || data.status === 'DEPLOYING') {
-          const newStatus = i < 5 ? 'جاري بناء الصورة...' : i < 15 ? 'جاري تثبيت الحزم...' : 'جاري تشغيل البوت...';
+          const newStatus = i < 5 ? t('editor.building') : i < 15 ? t('editor.installing') : t('editor.starting');
           if (newStatus !== lastStatus) {
             setDeployStatus(newStatus);
             addLog('info', newStatus);
@@ -362,24 +364,24 @@ export default function ProjectEditor() {
         } else if (data.status === 'INITIALIZING' || data.status === 'unknown') {
           initCount++;
           if (initCount === 1) {
-            addLog('info', 'جاري إنشاء البيئة على Railway...');
-            setDeployStatus('جاري التحضير...');
+            addLog('info', t('editor.creatingEnvironment'));
+            setDeployStatus(t('editor.preparing'));
           } else if (initCount === 5) {
-            setDeployStatus('جاري بناء الصورة...');
-            addLog('info', 'Railway يستغرق وقتاً في البناء، يرجى الانتظار...');
+            setDeployStatus(t('editor.building'));
+            addLog('info', t('editor.railwaySlowBuild'));
           } else if (initCount === 15) {
-            setDeployStatus('النشر يستغرق وقتاً أطول من المعتاد...');
+            setDeployStatus(t('editor.deployTakingLong'));
           } else if (initCount > 30) {
-            addLog('warning', 'النشر يستغرق وقتاً طويلاً جداً - قد يكون هناك مشكلة في Railway');
+            addLog('warning', t('editor.deployVeryLong'));
           }
         }
       } catch {
         // network error - silent retry
       }
     }
-    addLog('warning', 'استغرقت العملية وقتاً طويلاً، تحقق من حالة البوت لاحقاً');
+    addLog('warning', t('editor.tookTooLong'));
     return 'TIMEOUT';
-  }, [addLog]);
+  }, [addLog, t]);
 
   const handleStartBot = async () => {
     if (!project || !user) return;
@@ -389,7 +391,7 @@ export default function ProjectEditor() {
 
     if (!codeToken && !manualToken.trim()) {
       setShowTokenDialog(true);
-      toast.error('لم يتم العثور على توكن في الكود، أدخل التوكن يدوياً');
+      toast.error(t('editor.noToken'));
       return;
     }
 
@@ -397,19 +399,19 @@ export default function ProjectEditor() {
 
     if (botToken.length < 50) {
       setShowTokenDialog(true);
-      toast.error('توكن Discord غير صالح');
+      toast.error(t('editor.invalidToken'));
       return;
     }
 
     setIsDeploying(true);
     setDeployProgress(0);
-    setDeployStatus('جاري التحضير...');
+    setDeployStatus(t('editor.preparing'));
 
-    addLog('info', 'جاري بدء النشر...');
+    addLog('info', t('editor.startingDeploy'));
 
     if (selectedFile && hasUnsaved) {
       await supabase.from('project_files').update({ content: editorContent }).eq('id', selectedFile.id);
-      addLog('info', 'تم حفظ الملفات تلقائياً');
+      addLog('info', t('editor.filesSaved'));
     }
 
     await supabase.from('projects').update({ status: 'deploying' }).eq('id', project.id);
@@ -422,7 +424,7 @@ export default function ProjectEditor() {
         .eq('project_id', id!);
 
       if (!allFiles || allFiles.length === 0) {
-        addLog('error', 'لا توجد ملفات في المشروع');
+        addLog('error', t('editor.noFiles'));
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
@@ -436,7 +438,7 @@ export default function ProjectEditor() {
       );
 
       if (!mainFile) {
-        addLog('error', 'لا يوجد ملف رئيسي (index.js أو bot.py)');
+        addLog('error', t('editor.noMainFile'));
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
@@ -446,7 +448,7 @@ export default function ProjectEditor() {
       const code = mainFile.content || '';
 
       setDeployProgress(10);
-      setDeployStatus('جاري الاتصال بالخادم...');
+      setDeployStatus(t('editor.connecting'));
 
       const proxyRes = await fetch(`${PROXY_URL}/deploy`, {
         method: 'POST',
@@ -463,17 +465,17 @@ export default function ProjectEditor() {
       const proxyData = await proxyRes.json();
 
       if (!proxyRes.ok || proxyData.error) {
-        const errMsg = proxyData.error || 'خطأ غير معروف';
-        addLog('error', `خطأ: ${errMsg}`);
+        const errMsg = proxyData.error || t('editor.unknownError');
+        addLog('error', t('editor.errorPrefix', { message: errMsg }));
 
         if (proxyData.code === 'QUOTA_EXCEEDED') {
-          toast.error('تم تجاوز حد الموارد المجانية في Railway - احذف بوتات غير مستخدمة', { duration: 8000 });
+          toast.error(t('editor.quotaExceeded'), { duration: 8000 });
         } else if (proxyData.code === 'INVALID_TOKEN') {
-          toast.error('توكن Discord غير صالح - تأكد من نسخ التوكن الصحيح من Discord Developer Portal', { duration: 8000 });
+          toast.error(t('editor.invalidTokenFull'), { duration: 8000 });
         } else if (proxyRes.status === 401) {
-          toast.error('جلسة منتهية - سجل دخول مجدداً', { duration: 5000 });
+          toast.error(t('editor.sessionExpired'), { duration: 5000 });
         } else {
-          toast.error('فشل النشر: ' + errMsg.substring(0, 100), { duration: 6000 });
+          toast.error(t('editor.deployFailedMsg', { message: errMsg.substring(0, 100) }), { duration: 6000 });
         }
 
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
@@ -484,7 +486,7 @@ export default function ProjectEditor() {
 
       const serviceId = proxyData.serviceId;
       setDeployProgress(30);
-      setDeployStatus('جاري بناء البوت...');
+      setDeployStatus(t('editor.buildingBot'));
 
       if (serviceId) {
         await supabase.from('projects').update({ railway_service_id: serviceId }).eq('id', project.id);
@@ -501,7 +503,7 @@ export default function ProjectEditor() {
         }
       }
     } catch (err: any) {
-      addLog('error', `خطأ: ${err.message}`);
+      addLog('error', t('editor.errorPrefix', { message: err.message }));
       await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'error' } : null);
     }
@@ -513,7 +515,7 @@ export default function ProjectEditor() {
 
   const handleStopBot = async () => {
     if (!project || !user) return;
-    addLog('warning', 'جاري إيقاف البوت...');
+    addLog('warning', t('editor.stoppingBot'));
     setIsDeploying(true);
 
     try {
@@ -526,12 +528,12 @@ export default function ProjectEditor() {
         });
 
         if (proxyRes.ok) {
-          addLog('success', 'تم إيقاف البوت');
+          addLog('success', t('editor.botStopped'));
         } else {
-          addLog('warning', 'حدث خطأ أثناء الإيقاف');
+          addLog('warning', t('editor.stopError'));
         }
       } else {
-        addLog('success', 'تم إيقاف البوت');
+        addLog('success', t('editor.botStopped'));
       }
 
       await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
@@ -539,22 +541,22 @@ export default function ProjectEditor() {
     } catch (err: any) {
       await supabase.from('projects').update({ status: 'stopped', railway_service_id: null }).eq('id', project.id);
       setProject(prev => prev ? { ...prev, status: 'stopped', railway_service_id: null } : null);
-      addLog('success', 'تم إيقاف البوت');
+      addLog('success', t('editor.botStopped'));
     }
     setIsDeploying(false);
   };
 
   const handleSaveManualToken = () => {
     if (!manualToken.trim()) {
-      toast.error('الرجاء إدخال التوكن');
+      toast.error(t('editor.pleaseEnterToken'));
       return;
     }
     if (manualToken.trim().length < 50) {
-      toast.error('توكن Discord غير صالح');
+      toast.error(t('editor.invalidToken'));
       return;
     }
     setShowTokenDialog(false);
-    toast.success('تم حفظ التوكن');
+    toast.success(t('editor.tokenSaved'));
   };
 
   const createFile = async () => {
@@ -563,7 +565,7 @@ export default function ProjectEditor() {
     const currentStorage = calculateStorageBytes(files);
     const limitBytes = planLimits.storage_mb * 1024 * 1024;
     if (currentStorage >= limitBytes) {
-      toast.error(`وصلت لحد التخزين! (${formatBytes(currentStorage)} / ${formatBytes(limitBytes)})`);
+      toast.error(t('editor.storageLimitReached', { used: formatBytes(currentStorage), limit: formatBytes(limitBytes) }));
       return;
     }
     const { data, error } = await supabase
@@ -577,7 +579,7 @@ export default function ProjectEditor() {
       setEditorContent('');
       setNewFileName('');
       setShowNewFile(false);
-      toast.success('تم إنشاء الملف');
+      toast.success(t('editor.fileCreated'));
     }
   };
 
@@ -588,7 +590,7 @@ export default function ProjectEditor() {
       setSelectedFile(null);
       setEditorContent('');
     }
-    toast.success('تم حذف الملف');
+    toast.success(t('editor.fileDeleted'));
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -600,7 +602,7 @@ export default function ProjectEditor() {
     const fileList = Array.from(importedFiles);
     for (const f of fileList) importedTotal += f.size;
     if (currentStorage + importedTotal > limitBytes) {
-      toast.error(`الملفات تتجاوز حد التخزين! (${formatBytes(currentStorage + importedTotal)} / ${formatBytes(limitBytes)})`);
+      toast.error(t('editor.filesExceedLimit', { used: formatBytes(currentStorage + importedTotal), limit: formatBytes(limitBytes) }));
       e.target.value = '';
       return;
     }
@@ -611,7 +613,7 @@ export default function ProjectEditor() {
         // Re-check storage before each insert (in case multiple files)
         const latestStorage = calculateStorageBytes(files);
         if (latestStorage + new Blob([content]).size > limitBytes) {
-          toast.error(`تجاوز حد التخزين أثناء استيراد الملفات`);
+          toast.error(t('editor.storageExceededImport'));
           return;
         }
         const { data } = await supabase
@@ -621,7 +623,7 @@ export default function ProjectEditor() {
           .single();
         if (data) {
           setFiles(prev => [...prev, data]);
-          toast.success(`تم استيراد ${file.name}`);
+          toast.success(t('editor.imported', { name: file.name }));
         }
       };
       reader.readAsText(file);
@@ -634,12 +636,12 @@ export default function ProjectEditor() {
     await supabase.from('projects').update({ name: projectName.trim() }).eq('id', project.id);
     setProject({ ...project, name: projectName.trim() });
     setEditingName(false);
-    toast.success('تم تحديث الاسم');
+    toast.success(t('editor.nameUpdated'));
   };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(editorContent);
-    toast.success('تم نسخ الكود');
+    toast.success(t('editor.codeCopied'));
   };
 
   const handleDownloadFile = () => {
@@ -675,7 +677,7 @@ export default function ProjectEditor() {
       a.click();
       URL.revokeObjectURL(url);
     }
-    toast.success('تم تحميل المشروع');
+    toast.success(t('editor.projectDownloaded'));
   };
 
   const handleFormatCode = () => {
@@ -685,7 +687,7 @@ export default function ProjectEditor() {
       .join('\n')
       .replace(/\n{4,}/g, '\n\n\n');
     setEditorContent(formatted);
-    toast.success('تم تنسيق الكود');
+    toast.success(t('editor.codeFormatted'));
   };
 
   const handleConsoleDragStart = (e: React.MouseEvent) => {
@@ -734,10 +736,10 @@ export default function ProjectEditor() {
   };
 
   const statusBadge = (() => {
-    if (isDeploying) return { color: 'text-yellow-400 bg-yellow-400/10', label: deployStatus || 'جاري النشر...' };
-    if (project?.status === 'running') return { color: 'text-green-400 bg-green-400/10', label: 'يعمل' };
-    if (project?.status === 'error') return { color: 'text-red-400 bg-red-400/10', label: 'خطأ' };
-    return { color: 'text-gray-400 bg-gray-400/10', label: 'متوقف' };
+    if (isDeploying) return { color: 'text-yellow-400 bg-yellow-400/10', label: deployStatus || t('editor.deployingStatus') };
+    if (project?.status === 'running') return { color: 'text-green-400 bg-green-400/10', label: t('dashboard.running') };
+    if (project?.status === 'error') return { color: 'text-red-400 bg-red-400/10', label: t('dashboard.error') };
+    return { color: 'text-gray-400 bg-gray-400/10', label: t('dashboard.stopped') };
   })();
 
   if (!project) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -764,25 +766,25 @@ export default function ProjectEditor() {
 
         <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           {detectedToken ? (
-            <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1 hidden sm:inline-flex" title="تم العثور على التوكن في الكود">
+            <Button size="sm" variant="ghost" className="text-green-400 hover:text-green-300 text-xs gap-1 hidden sm:inline-flex" title={t('editor.tokenFoundInCode')}>
               <Shield className="w-3.5 h-3.5" />
-              توكن متوفر
+              {t('editor.tokenAvailable')}
             </Button>
           ) : (
-            <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 text-xs gap-1 hidden sm:inline-flex" onClick={() => setShowTokenDialog(true)} title="أدخل التوكن يدوياً">
+            <Button size="sm" variant="ghost" className="text-orange-400 hover:text-orange-300 text-xs gap-1 hidden sm:inline-flex" onClick={() => setShowTokenDialog(true)} title={t('editor.enterTokenManually')}>
               <Shield className="w-3.5 h-3.5" />
-              أدخل التوكن
+              {t('editor.enterToken')}
             </Button>
           )}
 
           <Separator orientation="vertical" className="h-6 mx-0.5 sm:mx-1" />
 
           {/* Mobile Files Button */}
-          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => setShowMobileFiles(true)} title="الملفات">
+          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => setShowMobileFiles(true)} title={t('editor.files')}>
             <FolderOpen className="w-4 h-4" />
           </Button>
           {/* Mobile Import Button */}
-          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => mobileFileInputRef.current?.click()} title="استيراد ملف">
+          <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => mobileFileInputRef.current?.click()} title={t('editor.importFile')}>
             <Upload className="w-4 h-4" />
           </Button>
           <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
@@ -791,17 +793,17 @@ export default function ProjectEditor() {
           <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'terminal' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('terminal'); }} title="Terminal">
             <SquareTerminal className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${!showBottomPanel ? 'text-muted-foreground' : ''}`} onClick={() => setShowBottomPanel(!showBottomPanel)} title={showBottomPanel ? 'إخفاء' : 'عرض'}>
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${!showBottomPanel ? 'text-muted-foreground' : ''}`} onClick={() => setShowBottomPanel(!showBottomPanel)} title={showBottomPanel ? t('editor.hide') : t('editor.show')}>
             <X className="w-3 h-3" />
           </Button>
 
           {project.status === 'running' || isDeploying ? (
             <Button size="sm" variant="destructive" onClick={handleStopBot} disabled={isDeploying} className="gap-1 text-xs sm:text-sm">
-              <Square className="w-4 h-4" /> <span className="hidden sm:inline">إيقاف</span>
+              <Square className="w-4 h-4" /> <span className="hidden sm:inline">{t('editor.stopBot')}</span>
             </Button>
           ) : (
             <Button size="sm" className="gradient-bg text-primary-foreground gap-1 text-xs sm:text-sm" onClick={handleStartBot}>
-              <Play className="w-4 h-4" /> <span className="hidden sm:inline">تشغيل</span>
+              <Play className="w-4 h-4" /> <span className="hidden sm:inline">{t('editor.startBot')}</span>
             </Button>
           )}
         </div>
@@ -827,15 +829,15 @@ export default function ProjectEditor() {
         {/* File Explorer - hidden on mobile, shown on md+ */}
         <div className="hidden md:flex w-56 glass border-l border-border/30 flex-col">
           <div className="p-3 border-b border-border/30 flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">الملفات</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('editor.files')}</span>
             <div className="flex gap-0.5">
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowNewFile(true)} title="ملف جديد">
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowNewFile(true)} title={t('editor.newFile')}>
                 <Plus className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => fileInputRef.current?.click()} title="استيراد ملف">
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => fileInputRef.current?.click()} title={t('editor.importFile')}>
                 <Upload className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleDownloadProject} title="تحميل المشروع">
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleDownloadProject} title={t('editor.downloadProject')}>
                 <Download className="w-3 h-3" />
               </Button>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileImport} />
@@ -847,7 +849,7 @@ export default function ProjectEditor() {
               <Input
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
-                placeholder="اسم الملف.js"
+                placeholder={t('editor.fileName') + '.js'}
                 className="h-7 text-xs bg-secondary"
                 onKeyDown={e => e.key === 'Enter' && createFile()}
                 autoFocus
@@ -863,7 +865,7 @@ export default function ProjectEditor() {
             {files.length === 0 ? (
               <div className="p-4 text-center text-xs text-muted-foreground">
                 <FileCode2 className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                لا توجد ملفات
+                {t('editor.noFiles')}
               </div>
             ) : (
               files.map(file => (
@@ -921,12 +923,12 @@ export default function ProjectEditor() {
               );
             })()}
             <div className="flex justify-between">
-              <span>{files.length} ملف</span>
-              <span>{selectedFile ? lineCount(editorContent) : 0} سطر</span>
+              <span>{t('editor.fileCount', { count: files.length })}</span>
+              <span>{t('editor.lineCount', { count: selectedFile ? lineCount(editorContent) : 0 })}</span>
             </div>
             <div className="flex justify-between">
-              <span>{editorContent.length} حرف</span>
-              {hasUnsaved && <span className="text-yellow-400">● غير محفوظ</span>}
+              <span>{t('editor.charCount', { count: editorContent.length })}</span>
+              {hasUnsaved && <span className="text-yellow-400">● {t('editor.unsaved')}</span>}
             </div>
           </div>
         </div>
@@ -945,22 +947,22 @@ export default function ProjectEditor() {
                     {hasUnsaved && <span className="text-yellow-400 text-xs">●</span>}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={() => setWordWrap(!wordWrap)} title="التفاف النص">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={() => setWordWrap(!wordWrap)} title={t('editor.textWrap')}>
                       <RotateCcw className="w-3 h-3" />
-                      {wordWrap ? 'لف' : 'عادي'}
+                      {wordWrap ? t('editor.wrap') : t('editor.normal')}
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleFormatCode} title="تنسيق الكود">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleFormatCode} title={t('editor.formatCode')}>
                       <Code2 className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleCopyCode} title="نسخ">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleCopyCode} title={t('editor.copy')}>
                       <Copy className="w-3 h-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleDownloadFile} title="تحميل">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs gap-1" onClick={handleDownloadFile} title={t('editor.download')}>
                       <Download className="w-3 h-3" />
                     </Button>
                     <Separator orientation="vertical" className="h-4" />
                     <Button size="sm" onClick={saveFile} className="gradient-bg text-primary-foreground h-6 text-xs px-3 gap-1">
-                      <Save className="w-3 h-3" /> حفظ
+                      <Save className="w-3 h-3" /> {t('editor.save')}
                     </Button>
                     <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Ctrl+S</span>
                   </div>
@@ -981,12 +983,12 @@ export default function ProjectEditor() {
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground flex-col gap-3">
                 <FileCode2 className="w-12 h-12 opacity-30" />
-                <span>اختر ملف للتعديل</span>
+                <span>{t('editor.selectFileToEdit')}</span>
                 <Button size="sm" variant="outline" onClick={() => { setShowNewFile(true); setShowMobileFiles(true); }} className="gap-1">
-                  <Plus className="w-4 h-4" /> إنشاء ملف جديد
+                  <Plus className="w-4 h-4" /> {t('editor.createFile')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setShowMobileFiles(true)} className="gap-1">
-                  <FileCode2 className="w-4 h-4" /> عرض الملفات
+                  <FileCode2 className="w-4 h-4" /> {t('editor.viewFiles')}
                 </Button>
               </div>
             )}
@@ -1032,7 +1034,7 @@ export default function ProjectEditor() {
                 </div>
                 <div className="flex gap-0.5 px-1">
                   {bottomTab === 'console' && (
-                    <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => setConsoleLogs([])}>مسح</Button>
+                    <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px]" onClick={() => setConsoleLogs([])}>{t('editor.clear')}</Button>
                   )}
                   <Button size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setShowBottomPanel(false)}>
                     <X className="w-3 h-3" />
@@ -1088,14 +1090,14 @@ export default function ProjectEditor() {
             <SheetTitle className="text-right flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-primary" />
-                <span className="text-sm font-bold">الملفات</span>
+                <span className="text-sm font-bold">{t('editor.files')}</span>
               </div>
               <div className="flex gap-1">
                 <Button size="sm" variant="outline" className="h-8 px-3 gap-1" onClick={() => setShowNewFile(true)}>
-                  <Plus className="w-4 h-4" /> <span className="text-xs">ملف جديد</span>
+                  <Plus className="w-4 h-4" /> <span className="text-xs">{t('editor.newFile')}</span>
                 </Button>
                 <Button size="sm" variant="outline" className="h-8 px-3 gap-1" onClick={() => mobileFileInputRef.current?.click()}>
-                  <Upload className="w-4 h-4" /> <span className="text-xs">استيراد</span>
+                  <Upload className="w-4 h-4" /> <span className="text-xs">{t('editor.import')}</span>
                 </Button>
               </div>
             </SheetTitle>
@@ -1106,12 +1108,12 @@ export default function ProjectEditor() {
               <Input
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
-                placeholder="اسم الملف.js"
+                placeholder={t('editor.fileName') + '.js'}
                 className="h-10 text-sm bg-secondary"
                 onKeyDown={e => e.key === 'Enter' && createFile()}
                 autoFocus
               />
-              <Button size="sm" className="h-10 px-3" onClick={createFile}>إنشاء</Button>
+              <Button size="sm" className="h-10 px-3" onClick={createFile}>{t('editor.create')}</Button>
               <Button size="sm" variant="ghost" className="h-10 px-2" onClick={() => { setShowNewFile(false); setNewFileName(''); }}>
                 <X className="w-4 h-4" />
               </Button>
@@ -1122,8 +1124,8 @@ export default function ProjectEditor() {
             {files.length === 0 ? (
               <div className="p-8 text-center">
                 <FileCode2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm text-muted-foreground">لا توجد ملفات</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">استورد ملف أو أنشئ ملف جديد</p>
+                <p className="text-sm text-muted-foreground">{t('editor.noFiles')}</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">{t('editor.noFilesHint')}</p>
               </div>
             ) : (
               files.map(file => (
@@ -1172,8 +1174,8 @@ export default function ProjectEditor() {
               );
             })()}
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{files.length} ملف</span>
-              {hasUnsaved && <span className="text-yellow-400">غير محفوظ</span>}
+              <span>{t('editor.fileCount', { count: files.length })}</span>
+              {hasUnsaved && <span className="text-yellow-400">{t('editor.unsaved')}</span>}
             </div>
           </div>
 
@@ -1194,11 +1196,11 @@ export default function ProjectEditor() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
                 <Shield className="w-6 h-6 text-primary-foreground" />
               </div>
-              <h2 className="text-lg font-bold">توكن Discord</h2>
+              <h2 className="text-lg font-bold">{t('editor.tokenDialog')}</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 {detectedToken
-                  ? 'تم العثور على توكن في الكود. يمكنك تجاوز هذا إذا أردت.'
-                  : 'لم يتم العثور على توكن في الكود. أدخله يدوياً.'}
+                  ? t('editor.tokenFoundSkip')
+                  : t('editor.tokenDialogDesc')}
               </p>
             </div>
 
@@ -1207,7 +1209,7 @@ export default function ProjectEditor() {
                 value={manualToken}
                 onChange={e => setManualToken(e.target.value)}
                 type={showManualToken ? 'text' : 'password'}
-                placeholder="الصق التوكن هنا..."
+                placeholder={t('editor.tokenPlaceholder')}
                 className="bg-secondary border-border/50 text-left font-mono text-sm pl-12"
                 dir="ltr"
                 autoFocus
@@ -1223,22 +1225,22 @@ export default function ProjectEditor() {
 
             {detectedToken && (
               <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-2 mb-4 text-xs text-green-400">
-                تم العثور على توكن في الكود تلقائياً
+                {t('editor.tokenFoundAuto')}
               </div>
             )}
 
             <div className="text-xs text-muted-foreground mb-4 space-y-0.5">
-              <p>للحصول على توكن:</p>
-              <p className="mr-4">1. اذهب إلى <a href="https://discord.com/developers/applications" target="_blank" className="text-primary hover:underline">Discord Developer Portal</a></p>
-              <p className="mr-4">2. اختر تطبيق - Bot - Copy Token</p>
+              <p>{t('editor.howToGetToken')}</p>
+              <p className="mr-4">1. {t('editor.goToDevPortal')} <a href="https://discord.com/developers/applications" target="_blank" className="text-primary hover:underline">Discord Developer Portal</a></p>
+              <p className="mr-4">2. {t('editor.selectAppBotCopy')}</p>
             </div>
 
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => { setShowTokenDialog(false); if (detectedToken) handleStartBot(); }}>
-                إلغاء
+                {t('editor.cancel')}
               </Button>
               <Button className="flex-1 gradient-bg text-primary-foreground" onClick={() => { handleSaveManualToken(); }}>
-                <Save className="w-4 h-4 ml-1" /> حفظ
+                <Save className="w-4 h-4 ml-1" /> {t('editor.save')}
               </Button>
             </div>
           </motion.div>
