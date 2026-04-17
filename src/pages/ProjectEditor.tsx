@@ -463,7 +463,13 @@ export default function ProjectEditor() {
       const proxyData = await proxyRes.json();
 
       if (!proxyRes.ok || proxyData.error) {
-        addLog('error', `خطأ: ${proxyData.error || 'خطأ غير معروف'}`);
+        const errMsg = proxyData.error || 'خطأ غير معروف';
+        addLog('error', `خطأ: ${errMsg}`);
+
+        if (proxyData.code === 'QUOTA_EXCEEDED') {
+          toast.error('تم تجاوز حد الموارد المجانية في Railway - احذف بوتات غير مستخدمة', { duration: 8000 });
+        }
+
         await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
         setProject(prev => prev ? { ...prev, status: 'error' } : null);
         setIsDeploying(false);
