@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-const PROXY = import.meta.env.VITE_PROXY_URL || 'https://proxy-production-a7b5.up.railway.app';
+const PROXY = import.meta.env.VITE_PROXY_URL || 'https://nova-deploy-proxy-production.up.railway.app';
 const TOOL_IMAGE = '/NOVA_TOOL.png';
 const TOOL_FILE = '/NOVA_TOOL.zip';
 const TOOL_PRICE = 0.99;

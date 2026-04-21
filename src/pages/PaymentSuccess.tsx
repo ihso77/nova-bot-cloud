@@ -66,7 +66,7 @@ export default function PaymentSuccess() {
       // SECURITY: Verify payment with Paymento via proxy
       if (payment.provider === 'paymento' && payment.id) {
         try {
-          const verifyRes = await fetch('https://proxy-production-a7b5.up.railway.app/verify', {
+          const verifyRes = await fetch('https://nova-deploy-proxy-production.up.railway.app/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: payment.id }),

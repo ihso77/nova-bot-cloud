@@ -16,7 +16,7 @@ interface Plan {
   description: string;
 }
 
-const PAYMENT_PROXY_URL = 'https://proxy-production-a7b5.up.railway.app/payment';
+const PAYMENT_PROXY_URL = 'https://nova-deploy-proxy-production.up.railway.app/payment';
 
 export default function Checkout() {
   const { t } = useTranslation();
