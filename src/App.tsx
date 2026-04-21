@@ -20,6 +20,7 @@ import DiscordUsernameChecker from "./pages/DiscordUsernameChecker";
 import Tools from "./pages/Tools";
 import NitroGenerator from "./pages/NitroGenerator";
 import DiscordTimestamp from "./pages/DiscordTimestamp";
+import NovaTool from "./pages/NovaTool";
 import NotFound from "./pages/NotFound";
 import GiftPopup from "./components/GiftPopup";
 
@@ -58,6 +59,7 @@ const App = () => {
             <Route path="/tools/discord-username-checker" element={<DiscordUsernameChecker />} />
             <Route path="/tools/nitro-generator" element={<NitroGenerator />} />
             <Route path="/tools/discord-timestamp" element={<DiscordTimestamp />} />
+            <Route path="/tools/nova-tool" element={<NovaTool />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <GiftPopup />

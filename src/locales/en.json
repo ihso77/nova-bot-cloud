@@ -165,7 +165,11 @@
     "nitroGenerator": "Discord Nitro Generator",
     "nitroGeneratorDesc": "Generate and check Discord Nitro codes automatically",
     "timestampGen": "Timestamp Generator",
-    "timestampGenDesc": "Create dynamic Discord timestamps in all formats"
+    "timestampGenDesc": "Create dynamic Discord timestamps in all formats",
+    "novaTool": "NOVA TOOL",
+    "novaToolDesc": "A professional all-in-one tool to enhance your Discord experience",
+    "novaToolTag": "Paid",
+    "viewDetails": "View Details"
   },
   "discordChecker": {
     "title": "Discord Username Checker",
@@ -607,5 +611,30 @@
     "deployFailedMsg": "Deploy failed: {{message}}",
     "deployingStatus": "Deploying...",
     "goToDevPortal": "Go to"
+  },
+  "novaTool": {
+    "backToTools": "Back to Tools",
+    "subtitle": "Professional all-in-one tool",
+    "oneTime": "One-time payment",
+    "buyNow": "Buy Now",
+    "downloadNow": "Download Now",
+    "purchased": "Purchased - Ready to download",
+    "loginRequired": "Please log in first",
+    "purchaseSuccess": "Purchase successful! You can now download the tool",
+    "purchaseError": "Purchase failed",
+    "verifyError": "Purchase verification failed",
+    "downloadStarted": "Download started!",
+    "featuresTitle": "Tool Features",
+    "feature1Title": "High Performance",
+    "feature1Desc": "Built with the latest technologies to ensure the best performance and stability",
+    "feature2Title": "Advanced Protection",
+    "feature2Desc": "Advanced encryption and full data protection during usage",
+    "feature3Title": "Regular Updates",
+    "feature3Desc": "Regular and continuous updates to add new features and improve performance",
+    "feature4Title": "Technical Support",
+    "feature4Desc": "24/7 technical support available to solve any issues or inquiries",
+    "securePayment": "Secure Payment",
+    "instantDelivery": "Instant Delivery",
+    "moneyBack": "Money-back Guarantee"
   }
 }

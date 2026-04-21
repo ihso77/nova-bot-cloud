@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, ArrowLeft, Wrench, Zap, Clock } from 'lucide-react';
+import { Search, ArrowLeft, Wrench, Zap, Clock, Star, Package } from 'lucide-react';
 
 const container = {
   hidden: { opacity: 0 },
@@ -41,6 +41,16 @@ export default function Tools() {
       route: '/tools/discord-timestamp',
       tag: t('tools.free'),
       tagColor: 'bg-green-500/20 text-green-400 border-green-500/30',
+    },
+    {
+      name: t('tools.novaTool'),
+      description: t('tools.novaToolDesc'),
+      icon: Package,
+      route: '/tools/nova-tool',
+      tag: t('tools.novaToolTag'),
+      tagColor: 'bg-primary/20 text-primary border-primary/30',
+      image: '/NOVA_TOOL.png',
+      price: 0.99,
     },
   ];
 
@@ -86,14 +96,27 @@ export default function Tools() {
               <div className="absolute top-4 left-4">
                 <Badge className={`${tool.tagColor} text-xs`}>{tool.tag}</Badge>
               </div>
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl gradient-bg flex items-center justify-center mb-4 sm:mb-5 group-hover:glow-primary transition-all duration-300">
-                <tool.icon className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
-              </div>
+              {tool.image ? (
+                <div className="mb-4 sm:mb-5 rounded-xl overflow-hidden border border-border/30">
+                  <img src={tool.image} alt={tool.name} className="w-full h-32 sm:h-36 object-contain bg-secondary/20 group-hover:glow-primary transition-all duration-300" />
+                </div>
+              ) : (
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl gradient-bg flex items-center justify-center mb-4 sm:mb-5 group-hover:glow-primary transition-all duration-300">
+                  <tool.icon className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
+                </div>
+              )}
               <h3 className="text-lg sm:text-xl font-bold mb-2">{tool.name}</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed mb-5 sm:mb-6">{tool.description}</p>
+              <p className="text-muted-foreground text-sm leading-relaxed mb-2">{tool.description}</p>
+              {'price' in tool && (
+                <div className="flex items-center gap-2 mb-5 sm:mb-6">
+                  <Star className="w-4 h-4 text-primary" />
+                  <span className="text-lg font-bold gradient-text">${(tool as any).price.toFixed(2)}</span>
+                  <span className="text-muted-foreground text-xs">{t('novaTool.oneTime')}</span>
+                </div>
+              )}
               <Link to={tool.route}>
                 <Button className="gradient-bg text-primary-foreground gap-2 group-hover:glow-primary transition-all">
-                  <span>{t('tools.openTool')}</span>
+                  <span>{tool.tagColor.includes('primary') ? t('tools.viewDetails') : t('tools.openTool')}</span>
                   <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 </Button>
               </Link>

@@ -170,7 +170,11 @@
     "nitroGenerator": "مولد نيترو ديسكورد",
     "nitroGeneratorDesc": "يولد أكواد نيترو ديسكورد ويفحصها تلقائياً",
     "timestampGen": "مولد طوابع الوقت",
-    "timestampGenDesc": "أنشئ طوابع وقت ديسكورد الديناميكية بجميع الصيغ"
+    "timestampGenDesc": "أنشئ طوابع وقت ديسكورد الديناميكية بجميع الصيغ",
+    "novaTool": "NOVA TOOL",
+    "novaToolDesc": "أداة احترافية متكاملة لتحسين تجربتك في ديسكورد",
+    "novaToolTag": "مدفوع",
+    "viewDetails": "عرض التفاصيل"
   },
   "discordChecker": {
     "title": "فاحص يوزرات ديسكورد",
@@ -612,5 +616,30 @@
     "deployFailedMsg": "فشل النشر: {{message}}",
     "deployingStatus": "جاري النشر...",
     "goToDevPortal": "اذهب إلى"
+  },
+  "novaTool": {
+    "backToTools": "العودة للأدوات",
+    "subtitle": "أداة احترافية متكاملة",
+    "oneTime": "دفعة واحدة",
+    "buyNow": "شراء الآن",
+    "downloadNow": "تحميل الآن",
+    "purchased": "تم الشراء - متاح للتحميل",
+    "loginRequired": "يجب تسجيل الدخول أولاً",
+    "purchaseSuccess": "تم الشراء بنجاح! يمكنك الآن تحميل الأداة",
+    "purchaseError": "حدث خطأ في الشراء",
+    "verifyError": "فشل التحقق من الشراء",
+    "downloadStarted": "بدأ التحميل!",
+    "featuresTitle": "مميزات الأداة",
+    "feature1Title": "أداء عالي",
+    "feature1Desc": "أداة مصممة بأحدث التقنيات لضمان أفضل أداء واستقرار في الاستخدام",
+    "feature2Title": "حماية متقدمة",
+    "feature2Desc": "تشفير متقدم وحماية كاملة لبياناتك أثناء الاستخدام",
+    "feature3Title": "تحديثات مستمرة",
+    "feature3Desc": "تحديثات منتظمة ومستمرة لإضافة مميزات جديدة وتحسين الأداء",
+    "feature4Title": "دعم فني",
+    "feature4Desc": "دعم فني متاح على مدار الساعة لحل أي مشاكل أو استفسارات",
+    "securePayment": "دفع آمن",
+    "instantDelivery": "استلام فوري",
+    "moneyBack": "ضمان استرجاع"
   }
 }
