@@ -91,11 +91,11 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
-      <div className="container mx-auto max-w-5xl">
+      <div className="max-w-7xl mx-auto">
         <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold gradient-text">{t('dashboard.title')}</h1>
           {subscriptions.length > 0 && (
-              <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground w-full sm:w-auto justify-center">
+              <Button onClick={() => navigate('/dashboard/new-project')} className="bg-[#002b86] hover:bg-[#0035a0] text-white w-full sm:w-auto justify-center">
                 <Plus className="w-4 h-4 ml-2" /> {t('dashboard.newProject')}
               </Button>
           )}
@@ -114,32 +114,32 @@ export default function Dashboard() {
           return (
             <div className="mb-8 space-y-3">
               {subscriptions.map(sub => (
-                <div key={sub.id} className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div key={sub.id} className="glass-card rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{sub.plans?.name}</span>
                     {sub.is_free_trial && <Badge className="bg-success/20 text-success">{t('dashboard.trial')}</Badge>}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-[#71717a]">
                     <Clock className="w-4 h-4 flex-shrink-0" />
                     <span>{t('dashboard.expires')} {format(new Date(sub.expires_at), 'dd MMM yyyy', { locale: ar })}</span>
                   </div>
                 </div>
               ))}
               {/* Storage bar using BEST plan limits */}
-              <div className="glass rounded-xl p-4 space-y-3">
+              <div className="glass-card rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">{t('dashboard.storageUsed')} ({bestSub.plans?.name})</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
+                  <HardDrive className={`w-3.5 h-3.5 ${isNearLimit ? 'text-yellow-400' : 'text-[#002b86]'}`} />
                   <div className="flex-1">
-                    <div className="flex justify-between mb-1 text-muted-foreground">
+                    <div className="flex justify-between mb-1 text-[#71717a]">
                       <span>{t('dashboard.storageUsed')}</span>
                       <span className={isNearLimit ? 'text-yellow-400 font-medium' : ''}>{formatBytes(totalStorage)} / {formatBytes(storageLimitBytes)}</span>
                     </div>
                     <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                        className={`h-full rounded-full transition-all duration-500 ${isNearLimit ? 'bg-yellow-500' : 'bg-[#002b86]'}`}
                         style={{ width: `${storagePct}%` }}
                       />
                     </div>
@@ -151,18 +151,18 @@ export default function Dashboard() {
         })()}
 
         {subscriptions.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-8 sm:p-12 text-center mb-6 sm:mb-8">
-            <p className="text-muted-foreground mb-4">{t('dashboard.noSubscription')}</p>
-            <Button onClick={() => navigate('/plans')} className="gradient-bg text-primary-foreground">{t('index.browsePlans')}</Button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-2xl p-8 sm:p-12 text-center mb-6 sm:mb-8">
+            <p className="text-[#71717a] mb-4">{t('dashboard.noSubscription')}</p>
+            <Button onClick={() => navigate('/plans')} className="bg-[#002b86] hover:bg-[#0035a0] text-white">{t('index.browsePlans')}</Button>
           </motion.div>
         )}
 
         {/* Projects Grid */}
         {projects.length === 0 && subscriptions.length > 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-2xl p-12 text-center">
-            <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">{t('dashboard.noProjects')}</p>
-            <Button onClick={() => navigate('/dashboard/new-project')} className="gradient-bg text-primary-foreground">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-2xl p-12 text-center">
+            <FolderOpen className="w-16 h-16 text-[#71717a] mx-auto mb-4" />
+            <p className="text-[#71717a] mb-4">{t('dashboard.noProjects')}</p>
+            <Button onClick={() => navigate('/dashboard/new-project')} className="bg-[#002b86] hover:bg-[#0035a0] text-white">
               <Plus className="w-4 h-4 ml-2" /> {t('dashboard.createFirst')}
             </Button>
           </motion.div>
@@ -175,17 +175,17 @@ export default function Dashboard() {
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
                 whileHover={{ y: -4 }}
-                className="glass rounded-xl p-5 cursor-pointer"
+                className="glass-card rounded-xl p-5 cursor-pointer"
                 onClick={() => navigate(`/dashboard/project/${project.id}`)}
               >
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold truncate">{project.name}</h3>
                   <div className="flex items-center gap-1.5">
                     <div className={`w-2 h-2 rounded-full ${statusColors[project.status]}`} />
-                    <span className="text-xs text-muted-foreground">{statusLabels[project.status]}</span>
+                    <span className="text-xs text-[#71717a]">{statusLabels[project.status]}</span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center justify-between text-sm text-[#71717a]">
                   <Badge variant="secondary" className="text-xs">{project.language}</Badge>
                   <span>{format(new Date(project.created_at), 'dd/MM/yyyy')}</span>
                 </div>

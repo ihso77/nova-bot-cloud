@@ -742,12 +742,12 @@ export default function ProjectEditor() {
     return { color: 'text-gray-400 bg-gray-400/10', label: t('dashboard.stopped') };
   })();
 
-  if (!project) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (!project) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-[#002b86] border-t-transparent rounded-full animate-spin" /></div>;
 
   return (
     <div className="h-screen pt-16 flex flex-col" dir="rtl">
       {/* Top Toolbar */}
-      <div className="glass border-b border-border/30 px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto">
+      <div className="glass-card border-b border-white/8 px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto">
         <div className="flex items-center gap-3 min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2">
@@ -757,7 +757,7 @@ export default function ProjectEditor() {
             </div>
           ) : (
             <div className="flex items-center gap-2 min-w-0">
-              <FolderOpen className="w-4 h-4 text-primary flex-shrink-0" />
+              <FolderOpen className="w-4 h-4 text-[#002b86] flex-shrink-0" />
               <h2 className="font-bold truncate">{project.name}</h2>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(true)}><Edit3 className="w-3 h-3" /></Button>
             </div>
@@ -787,13 +787,13 @@ export default function ProjectEditor() {
           <Button size="sm" variant="ghost" className="md:hidden h-8 w-8 p-0" onClick={() => mobileFileInputRef.current?.click()} title={t('editor.importFile')}>
             <Upload className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'console' ? 'text-[#002b86]' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('console'); }} title="Console">
             <TerminalIcon className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'terminal' ? 'text-primary' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('terminal'); }} title="Terminal">
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${showBottomPanel && bottomTab === 'terminal' ? 'text-[#002b86]' : ''}`} onClick={() => { setShowBottomPanel(true); setBottomTab('terminal'); }} title="Terminal">
             <SquareTerminal className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${!showBottomPanel ? 'text-muted-foreground' : ''}`} onClick={() => setShowBottomPanel(!showBottomPanel)} title={showBottomPanel ? t('editor.hide') : t('editor.show')}>
+          <Button size="sm" variant="ghost" className={`h-8 w-8 p-0 ${!showBottomPanel ? 'text-[#71717a]' : ''}`} onClick={() => setShowBottomPanel(!showBottomPanel)} title={showBottomPanel ? t('editor.hide') : t('editor.show')}>
             <X className="w-3 h-3" />
           </Button>
 
@@ -802,7 +802,7 @@ export default function ProjectEditor() {
               <Square className="w-4 h-4" /> <span className="hidden sm:inline">{t('editor.stopBot')}</span>
             </Button>
           ) : (
-            <Button size="sm" className="gradient-bg text-primary-foreground gap-1 text-xs sm:text-sm" onClick={handleStartBot}>
+            <Button size="sm" className="bg-[#002b86] hover:bg-[#0035a0] text-white gap-1 text-xs sm:text-sm" onClick={handleStartBot}>
               <Play className="w-4 h-4" /> <span className="hidden sm:inline">{t('editor.startBot')}</span>
             </Button>
           )}
@@ -813,13 +813,13 @@ export default function ProjectEditor() {
       <AnimatePresence>
         {isDeploying && deployProgress > 0 && (
           <motion.div initial={{ height: 0 }} animate={{ height: 32 }} exit={{ height: 0 }} className="overflow-hidden">
-            <div className="flex items-center gap-3 px-4 h-8 bg-secondary/30 border-b border-border/30">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-              <span className="text-xs text-muted-foreground">{deployStatus}</span>
+            <div className="flex items-center gap-3 px-4 h-8 bg-secondary/30 border-b border-white/8">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#002b86]" />
+              <span className="text-xs text-[#71717a]">{deployStatus}</span>
               <div className="flex-1 max-w-xs">
                 <Progress value={deployProgress} className="h-1.5" />
               </div>
-              <span className="text-xs text-muted-foreground">{Math.round(deployProgress)}%</span>
+              <span className="text-xs text-[#71717a]">{Math.round(deployProgress)}%</span>
             </div>
           </motion.div>
         )}
@@ -827,9 +827,9 @@ export default function ProjectEditor() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* File Explorer - hidden on mobile, shown on md+ */}
-        <div className="hidden md:flex w-56 glass border-l border-border/30 flex-col">
-          <div className="p-3 border-b border-border/30 flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('editor.files')}</span>
+        <div className="hidden md:flex w-56 glass-card border-l border-white/8 flex-col">
+          <div className="p-3 border-b border-white/8 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#71717a] uppercase tracking-wider">{t('editor.files')}</span>
             <div className="flex gap-0.5">
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setShowNewFile(true)} title={t('editor.newFile')}>
                 <Plus className="w-3 h-3" />
@@ -845,7 +845,7 @@ export default function ProjectEditor() {
           </div>
 
           {showNewFile && (
-            <div className="p-2 border-b border-border/30 flex gap-1">
+            <div className="p-2 border-b border-white/8 flex gap-1">
               <Input
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
@@ -863,7 +863,7 @@ export default function ProjectEditor() {
 
           <div className="flex-1 overflow-y-auto">
             {files.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground">
+              <div className="p-4 text-center text-xs text-[#71717a]">
                 <FileCode2 className="w-6 h-6 mx-auto mb-2 opacity-50" />
                 {t('editor.noFiles')}
               </div>
@@ -872,7 +872,7 @@ export default function ProjectEditor() {
                 <div
                   key={file.id}
                   className={`flex items-center justify-between px-3 py-1.5 cursor-pointer transition-colors group ${
-                    selectedFile?.id === file.id ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-secondary/50'
+                    selectedFile?.id === file.id ? 'bg-[#002b86]/10 border-r-2 border-[#002b86]' : 'hover:bg-secondary/50'
                   }`}
                   onClick={() => { setSelectedFile(file); setEditorContent(file.content || ''); }}
                 >
@@ -894,7 +894,7 @@ export default function ProjectEditor() {
           </div>
 
           {/* Storage usage & Stats footer */}
-          <div className="p-2 border-t border-border/30 text-xs text-muted-foreground space-y-1.5">
+          <div className="p-2 border-t border-white/8 text-xs text-[#71717a] space-y-1.5">
             {/* Storage bar */}
             {(() => {
               const currentStorage = calculateStorageBytes(files, editorContent, selectedFile?.id);
@@ -906,7 +906,7 @@ export default function ProjectEditor() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1">
-                      <HardDrive className={`w-3 h-3 ${isOverLimit ? 'text-red-400' : isNearLimit ? 'text-yellow-400' : 'text-primary'}`} />
+                      <HardDrive className={`w-3 h-3 ${isOverLimit ? 'text-red-400' : isNearLimit ? 'text-yellow-400' : 'text-[#002b86]'}`} />
                       <span className={isOverLimit ? 'text-red-400 font-medium' : isNearLimit ? 'text-yellow-400' : ''}>
                         {formatBytes(currentStorage)} / {formatBytes(limitBytes)}
                       </span>
@@ -915,7 +915,7 @@ export default function ProjectEditor() {
                   </div>
                   <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                      className={`h-full rounded-full transition-all duration-500 ${isOverLimit ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-[#002b86]'}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -940,7 +940,7 @@ export default function ProjectEditor() {
             {selectedFile ? (
               <>
                 {/* Editor toolbar */}
-                <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-1.5 bg-background/80 backdrop-blur-sm border-b border-border/30">
+                <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-3 py-1.5 bg-background/80 backdrop-blur-sm border-b border-white/8">
                   <div className="flex items-center gap-2">
                     <FileText className={`w-3.5 h-3.5 ${getFileIcon(selectedFile.file_name)}`} />
                     <span className="text-xs font-medium">{selectedFile.file_name}</span>
@@ -961,10 +961,10 @@ export default function ProjectEditor() {
                       <Download className="w-3 h-3" />
                     </Button>
                     <Separator orientation="vertical" className="h-4" />
-                    <Button size="sm" onClick={saveFile} className="gradient-bg text-primary-foreground h-6 text-xs px-3 gap-1">
+                    <Button size="sm" onClick={saveFile} className="bg-[#002b86] hover:bg-[#0035a0] text-white h-6 text-xs px-3 gap-1">
                       <Save className="w-3 h-3" /> {t('editor.save')}
                     </Button>
-                    <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Ctrl+S</span>
+                    <span className="text-xs text-[#71717a] mr-1 hidden sm:inline">Ctrl+S</span>
                   </div>
                 </div>
 
@@ -981,7 +981,7 @@ export default function ProjectEditor() {
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground flex-col gap-3">
+              <div className="flex items-center justify-center h-full text-[#71717a] flex-col gap-3">
                 <FileCode2 className="w-12 h-12 opacity-30" />
                 <span>{t('editor.selectFileToEdit')}</span>
                 <Button size="sm" variant="outline" onClick={() => { setShowNewFile(true); setShowMobileFiles(true); }} className="gap-1">
@@ -996,22 +996,22 @@ export default function ProjectEditor() {
 
           {/* Bottom Panel resize handle */}
           <div
-            className="h-1 cursor-ns-resize hover:bg-primary/50 transition-colors flex-shrink-0"
+            className="h-1 cursor-ns-resize hover:bg-[#002b86]/50 transition-colors flex-shrink-0"
             onMouseDown={handleConsoleDragStart}
           />
 
           {/* Bottom Panel - Console & Terminal */}
           {showBottomPanel && (
-            <div className="border-t border-border/30 flex flex-col flex-shrink-0" style={{ height: Math.min(consoleHeight, window.innerWidth < 640 ? 200 : 500) }}>
+            <div className="border-t border-white/8 flex flex-col flex-shrink-0" style={{ height: Math.min(consoleHeight, window.innerWidth < 640 ? 200 : 500) }}>
               {/* Tab bar */}
-              <div className="flex items-center justify-between px-1 border-b border-border/30 flex-shrink-0 bg-card/80">
+              <div className="flex items-center justify-between px-1 border-b border-white/8 flex-shrink-0 bg-card/80">
                 <div className="flex items-center">
                   <button
                     onClick={() => setBottomTab('console')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 ${
                       bottomTab === 'console'
-                        ? 'text-primary border-primary bg-primary/5'
-                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-secondary/50'
+                        ? 'text-[#002b86] border-[#002b86] bg-[#002b86]/5'
+                        : 'text-[#71717a] border-transparent hover:text-foreground hover:bg-secondary/50'
                     }`}
                   >
                     <TerminalIcon className="w-3 h-3" />
@@ -1024,8 +1024,8 @@ export default function ProjectEditor() {
                     onClick={() => setBottomTab('terminal')}
                     className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 ${
                       bottomTab === 'terminal'
-                        ? 'text-primary border-primary bg-primary/5'
-                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-secondary/50'
+                        ? 'text-[#002b86] border-[#002b86] bg-[#002b86]/5'
+                        : 'text-[#71717a] border-transparent hover:text-foreground hover:bg-secondary/50'
                     }`}
                   >
                     <SquareTerminal className="w-3 h-3" />
@@ -1047,7 +1047,7 @@ export default function ProjectEditor() {
                 <div className="flex-1 overflow-hidden bg-[#0d1117]">
                   <div ref={consoleRef} className="h-full overflow-y-auto p-2 font-mono text-xs space-y-0.5" dir="ltr">
                     {consoleLogs.length === 0 ? (
-                      <div className="text-muted-foreground/50 flex items-center gap-2 h-full">
+                      <div className="text-[#71717a]/50 flex items-center gap-2 h-full">
                         <Activity className="w-3 h-3" />
                         Console output will appear here...
                       </div>
@@ -1056,8 +1056,8 @@ export default function ProjectEditor() {
                         const Icon = logIcons[log.type] || TerminalIcon;
                         return (
                           <div key={log.id} className="flex gap-2 items-start hover:bg-white/5 px-1 rounded transition-colors">
-                            <Icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-muted-foreground/50'}`} />
-                            <span className="text-muted-foreground/40 flex-shrink-0">{log.time}</span>
+                            <Icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : log.type === 'warning' ? 'text-yellow-400' : 'text-[#71717a]/50'}`} />
+                            <span className="text-[#71717a]/40 flex-shrink-0">{log.time}</span>
                             <span className={`${logColors[log.type] || 'text-foreground/80'} break-all`}>{log.text}</span>
                           </div>
                         );
@@ -1086,10 +1086,10 @@ export default function ProjectEditor() {
       {/* Mobile Files Sheet - visible on mobile only */}
       <Sheet open={showMobileFiles} onOpenChange={setShowMobileFiles}>
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl p-0" dir="rtl">
-          <SheetHeader className="px-4 pt-3 pb-2 border-b border-border/30">
+          <SheetHeader className="px-4 pt-3 pb-2 border-b border-white/8">
             <SheetTitle className="text-right flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-primary" />
+                <FolderOpen className="w-4 h-4 text-[#002b86]" />
                 <span className="text-sm font-bold">{t('editor.files')}</span>
               </div>
               <div className="flex gap-1">
@@ -1104,7 +1104,7 @@ export default function ProjectEditor() {
           </SheetHeader>
 
           {showNewFile && (
-            <div className="p-3 border-b border-border/30 flex gap-2">
+            <div className="p-3 border-b border-white/8 flex gap-2">
               <Input
                 value={newFileName}
                 onChange={e => setNewFileName(e.target.value)}
@@ -1124,15 +1124,15 @@ export default function ProjectEditor() {
             {files.length === 0 ? (
               <div className="p-8 text-center">
                 <FileCode2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                <p className="text-sm text-muted-foreground">{t('editor.noFiles')}</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">{t('editor.noFilesHint')}</p>
+                <p className="text-sm text-[#71717a]">{t('editor.noFiles')}</p>
+                <p className="text-xs text-[#71717a]/60 mt-1">{t('editor.noFilesHint')}</p>
               </div>
             ) : (
               files.map(file => (
                 <div
                   key={file.id}
                   className={`flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-colors mb-1 ${
-                    selectedFile?.id === file.id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-secondary/50'
+                    selectedFile?.id === file.id ? 'bg-[#002b86]/10 border border-[#002b86]/30' : 'hover:bg-secondary/50'
                   }`}
                   onClick={() => {
                     setSelectedFile(file);
@@ -1157,7 +1157,7 @@ export default function ProjectEditor() {
             )}
           </div>
 
-          <div className="border-t border-border/30 p-3 space-y-2">
+          <div className="border-t border-white/8 p-3 space-y-2">
             {(() => {
               const currentStorage = calculateStorageBytes(files, editorContent, selectedFile?.id);
               const limitBytes = planLimits.storage_mb * 1024 * 1024;
@@ -1165,7 +1165,7 @@ export default function ProjectEditor() {
               const isNearLimit = pct > 85;
               const isOverLimit = currentStorage > limitBytes;
               return (
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-[#71717a]">
                   <span className={isOverLimit ? 'text-red-400 font-medium' : isNearLimit ? 'text-yellow-400' : ''}>
                     {formatBytes(currentStorage)} / {formatBytes(limitBytes)}
                   </span>
@@ -1173,7 +1173,7 @@ export default function ProjectEditor() {
                 </div>
               );
             })()}
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-xs text-[#71717a]">
               <span>{t('editor.fileCount', { count: files.length })}</span>
               {hasUnsaved && <span className="text-yellow-400">{t('editor.unsaved')}</span>}
             </div>
@@ -1189,15 +1189,15 @@ export default function ProjectEditor() {
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-md glass rounded-2xl p-6 mx-4"
+            className="w-full max-w-md glass-card rounded-2xl p-6 mx-4"
             dir="rtl"
           >
             <div className="text-center mb-5">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
-                <Shield className="w-6 h-6 text-primary-foreground" />
+                <Shield className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-lg font-bold">{t('editor.tokenDialog')}</h2>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-[#71717a] mt-1">
                 {detectedToken
                   ? t('editor.tokenFoundSkip')
                   : t('editor.tokenDialogDesc')}
@@ -1210,14 +1210,14 @@ export default function ProjectEditor() {
                 onChange={e => setManualToken(e.target.value)}
                 type={showManualToken ? 'text' : 'password'}
                 placeholder={t('editor.tokenPlaceholder')}
-                className="bg-secondary border-border/50 text-left font-mono text-sm pl-12"
+                className="bg-secondary border-white/8 text-left font-mono text-sm pl-12"
                 dir="ltr"
                 autoFocus
               />
               <button
                 type="button"
                 onClick={() => setShowManualToken(!showManualToken)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-foreground"
               >
                 {showManualToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -1229,9 +1229,9 @@ export default function ProjectEditor() {
               </div>
             )}
 
-            <div className="text-xs text-muted-foreground mb-4 space-y-0.5">
+            <div className="text-xs text-[#71717a] mb-4 space-y-0.5">
               <p>{t('editor.howToGetToken')}</p>
-              <p className="mr-4">1. {t('editor.goToDevPortal')} <a href="https://discord.com/developers/applications" target="_blank" className="text-primary hover:underline">Discord Developer Portal</a></p>
+              <p className="mr-4">1. {t('editor.goToDevPortal')} <a href="https://discord.com/developers/applications" target="_blank" className="text-[#002b86] hover:underline">Discord Developer Portal</a></p>
               <p className="mr-4">2. {t('editor.selectAppBotCopy')}</p>
             </div>
 
@@ -1239,7 +1239,7 @@ export default function ProjectEditor() {
               <Button variant="outline" className="flex-1" onClick={() => { setShowTokenDialog(false); if (detectedToken) handleStartBot(); }}>
                 {t('editor.cancel')}
               </Button>
-              <Button className="flex-1 gradient-bg text-primary-foreground" onClick={() => { handleSaveManualToken(); }}>
+              <Button className="flex-1 bg-[#002b86] hover:bg-[#0035a0] text-white" onClick={() => { handleSaveManualToken(); }}>
                 <Save className="w-4 h-4 ml-1" /> {t('editor.save')}
               </Button>
             </div>

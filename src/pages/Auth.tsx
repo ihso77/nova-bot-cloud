@@ -157,9 +157,9 @@ export default function Auth() {
           <motion.div
             animate={{ boxShadow: ['0 0 20px -5px hsl(265 90% 60% / 0.3)', '0 0 40px -5px hsl(265 90% 60% / 0.5)', '0 0 20px -5px hsl(265 90% 60% / 0.3)'] }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center mb-4"
+            className="w-16 h-16 rounded-2xl bg-[#002b86] flex items-center justify-center mb-4"
           >
-            <Server className="w-8 h-8 text-primary-foreground" />
+            <Server className="w-8 h-8 text-white" />
           </motion.div>
           <motion.h1
             initial={{ y: 10, opacity: 0 }}
@@ -173,7 +173,7 @@ export default function Auth() {
             initial={{ y: 10, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-sm text-muted-foreground mt-1"
+            className="text-sm text-[#71717a] mt-1"
           >
             {isLogin ? t('auth.loginSubtitle') : t('auth.registerSubtitle')}
           </motion.p>
@@ -183,7 +183,7 @@ export default function Auth() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="glass rounded-2xl p-8"
+          className="glass-card rounded-2xl p-8"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
@@ -192,7 +192,7 @@ export default function Auth() {
                   placeholder={t('auth.displayName')}
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
-                  className="bg-secondary/50 border-border/50 h-11"
+                  className="bg-secondary/50 border-white/8 h-11"
                 />
               </motion.div>
             )}
@@ -204,7 +204,7 @@ export default function Auth() {
                 onChange={e => setEmail(e.target.value)}
                 required
                 dir="ltr"
-                className="bg-secondary/50 border-border/50 h-11"
+                className="bg-secondary/50 border-white/8 h-11"
               />
             </motion.div>
             <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.6 }}>
@@ -216,11 +216,11 @@ export default function Auth() {
                 required
                 minLength={8}
                 dir="ltr"
-                className="bg-secondary/50 border-border/50 h-11"
+                className="bg-secondary/50 border-white/8 h-11"
               />
             </motion.div>
             <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}>
-              <Button type="submit" disabled={loading} className="w-full gradient-bg text-primary-foreground h-11 text-base font-semibold">
+              <Button type="submit" disabled={loading} className="w-full bg-[#002b86] hover:bg-[#0035a0] text-white h-11 text-base font-semibold">
                 {loading ? (
                   <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                     <Sparkles className="w-4 h-4" />
@@ -234,12 +234,12 @@ export default function Auth() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="text-center text-sm text-muted-foreground mt-6"
+            className="text-center text-sm text-[#71717a] mt-6"
           >
             {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}{' '}
             <button
               onClick={() => navigate(isLogin ? '/register' : '/login')}
-              className="text-primary hover:underline font-semibold"
+              className="text-[#002b86] hover:underline font-semibold"
             >
               {isLogin ? t('auth.registerNow') : t('auth.loginNow')}
             </button>

@@ -218,7 +218,7 @@ export default function NovaTool() {
 
   return (
     <div className="min-h-screen pt-20 sm:pt-24 pb-12 sm:pb-16 px-4" dir="rtl">
-      <div className="container mx-auto max-w-4xl">
+      <div className="max-w-7xl mx-auto">
 
         {/* Back Button */}
         <motion.div
@@ -229,7 +229,7 @@ export default function NovaTool() {
           <Button
             variant="ghost"
             onClick={() => navigate('/tools')}
-            className="text-muted-foreground hover:text-foreground gap-2"
+            className="text-[#71717a] hover:text-white gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             {t('novaTool.backToTools')}
@@ -244,7 +244,7 @@ export default function NovaTool() {
             className="lg:col-span-3 space-y-6"
           >
             {/* Tool Image */}
-            <div className="glass rounded-2xl overflow-hidden">
+            <div className="glass-card rounded-2xl overflow-hidden">
               <div className="relative group">
                 <img
                   src={TOOL_IMAGE}
@@ -256,10 +256,10 @@ export default function NovaTool() {
             </div>
 
             {/* Description */}
-            <div className="glass rounded-2xl p-6 sm:p-8">
+            <div className="glass-card rounded-2xl p-6 sm:p-8">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-primary-foreground" />
+                <div className="w-10 h-10 rounded-xl bg-[#002b86] flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h2 className="text-lg sm:text-xl font-bold">{t('novaTool.featuresTitle')}</h2>
@@ -281,11 +281,11 @@ export default function NovaTool() {
                     className="flex gap-3 p-3 rounded-xl hover:bg-secondary/30 transition-colors"
                   >
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <feature.icon className="w-4 h-4 text-primary" />
+                      <feature.icon className="w-4 h-4 text-[#002b86]" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-sm">{feature.title}</h4>
-                      <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">{feature.desc}</p>
+                      <p className="text-[#71717a] text-xs sm:text-sm leading-relaxed">{feature.desc}</p>
                     </div>
                   </motion.div>
                 ))}
@@ -300,21 +300,21 @@ export default function NovaTool() {
             transition={{ delay: 0.15 }}
             className="lg:col-span-2"
           >
-            <div className="glass rounded-2xl p-6 sm:p-8 sticky top-24">
+            <div className="glass-card rounded-2xl p-6 sm:p-8 sticky top-24">
               <h2 className="text-2xl sm:text-3xl font-black gradient-text mb-2">NOVA TOOL</h2>
-              <p className="text-muted-foreground text-sm mb-6">{t('novaTool.subtitle')}</p>
+              <p className="text-[#71717a] text-sm mb-6">{t('novaTool.subtitle')}</p>
 
               {/* Price */}
-              <div className="glass rounded-xl p-4 mb-6">
+              <div className="glass-card rounded-xl p-4 mb-6">
                 <div className="flex items-baseline gap-2 mb-3">
                   <span className="text-3xl sm:text-4xl font-black gradient-text">${finalPrice.toFixed(2)}</span>
-                  <span className="text-muted-foreground text-sm">{t('novaTool.oneTime')}</span>
+                  <span className="text-[#71717a] text-sm">{t('novaTool.oneTime')}</span>
                 </div>
                 {appliedCoupon && (
                   <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
                     <CheckCircle className="w-4 h-4" />
                     <span>{t('checkout.couponApplied')}: {appliedCoupon.code}</span>
-                    <button onClick={() => setAppliedCoupon(null)} className="mr-auto text-muted-foreground hover:text-foreground">
+                    <button onClick={() => setAppliedCoupon(null)} className="mr-auto text-[#71717a] hover:text-white">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -327,7 +327,7 @@ export default function NovaTool() {
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
                       dir="ltr"
-                      className="flex-1 bg-background/50 border border-border/50 rounded-lg px-3 py-2 text-sm font-mono placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/50"
+                      className="flex-1 bg-background/50 border border-white/8 rounded-lg px-3 py-2 text-sm font-mono placeholder:text-[#71717a]/50 focus:outline-none focus:border-[#002b86]/50"
                     />
                     <Button
                       variant="outline"
@@ -344,13 +344,13 @@ export default function NovaTool() {
               {/* Action Button */}
               {loading ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <Loader2 className="w-6 h-6 animate-spin text-[#002b86]" />
                 </div>
               ) : purchased ? (
                 <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
                   <Button
                     onClick={handleDownload}
-                    className="w-full gradient-bg text-primary-foreground text-lg py-6 gap-2 glow-primary"
+                    className="w-full bg-[#002b86] hover:bg-[#0035a0] text-white text-lg py-6 gap-2"
                   >
                     <Download className="w-5 h-5" />
                     {t('novaTool.downloadNow')}
@@ -365,7 +365,7 @@ export default function NovaTool() {
                   <Button
                     onClick={handlePurchase}
                     disabled={purchasing || paymentStep === 'processing' || paymentStep === 'redirecting'}
-                    className="w-full gradient-bg text-primary-foreground text-lg py-6 gap-2"
+                    className="w-full bg-[#002b86] hover:bg-[#0035a0] text-white text-lg py-6 gap-2"
                   >
                     {purchasing || paymentStep === 'processing' ? (
                       <>
@@ -391,7 +391,7 @@ export default function NovaTool() {
                   </Button>
 
                   {!user && (
-                    <p className="text-center text-xs text-muted-foreground">
+                    <p className="text-center text-xs text-[#71717a]">
                       {t('novaTool.loginRequired')}
                     </p>
                   )}
@@ -410,8 +410,8 @@ export default function NovaTool() {
               )}
 
               {/* Trust badges */}
-              <div className="mt-6 pt-5 border-t border-border/30">
-                <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+              <div className="mt-6 pt-5 border-t border-white/8">
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-[#71717a]">
                   <div className="flex items-center gap-1">
                     <Shield className="w-3.5 h-3.5" />
                     {t('novaTool.securePayment')}

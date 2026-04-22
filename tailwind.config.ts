@@ -16,7 +16,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        cairo: ["Cairo", "sans-serif"],
+        baloo: ["'Baloo Bhaijaan 2'", "sans-serif"],
+        cairo: ["'Baloo Bhaijaan 2'", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
