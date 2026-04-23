@@ -5,5 +5,10 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/api/nova-api-handler/(.*)", "destination": "/api/nova-api-handler" }
-  ]
+  ],
+  "functions": {
+    "api/nova-api-handler.ts": {
+      "maxDuration": 30
+    }
+  }
 }

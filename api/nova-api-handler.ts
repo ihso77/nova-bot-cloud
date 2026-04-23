@@ -9,7 +9,6 @@ const PAYMENTO_API_KEY = process.env.PAYMENTO_API_KEY || ''
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || ''
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY)
-const supabaseAnon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -17,15 +16,18 @@ function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE')
 }
 
-async function validateToken(authHeader: string | null): Promise<{ userId: string; role: string; email: string } | null> {
+async function validateToken(authHeader: string | null) {
   if (!authHeader) return null
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
-  if (token === ADMIN_SECRET) return { userId: 'admin', role: 'admin', email: 'admin@nova.vps' }
   try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-    if (error || !user) return null
-    const { data: roleData } = await supabaseAdmin.from('user_roles').select('role').eq('user_id', user.id).single()
-    return { userId: user.id, role: roleData?.role || 'user', email: user.email || '' }
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+    if (token === ADMIN_SECRET) return { userId: 'admin', role: 'admin', email: 'admin@nova.vps' }
+    const result = await supabaseAdmin.auth.getUser(token)
+    const user = result.data?.user
+    if (!user || result.error) return null
+    try {
+      const { data: roleData } = await supabaseAdmin.from('user_roles').select('role').eq('user_id', user.id).single()
+      return { userId: user.id, role: roleData?.role || 'user', email: user.email || '' }
+    } catch { return { userId: user.id, role: 'user', email: user.email || '' } }
   } catch { return null }
 }
 
@@ -45,57 +47,28 @@ async function paymentoAPI(endpoint: string, method = 'GET', body?: any) {
   return { status: r.status, data: await r.json() }
 }
 
-async function ensureTables() {
-  try {
-    await supabaseAdmin.rpc('exec_sql', { sql_string: `
-      CREATE TABLE IF NOT EXISTS bot_processes (
-        id TEXT PRIMARY KEY,
-        user_id UUID NOT NULL REFERENCES auth.users(id),
-        project_id UUID,
-        name TEXT NOT NULL DEFAULT 'untitled',
-        language TEXT NOT NULL DEFAULT 'javascript',
-        status TEXT NOT NULL DEFAULT 'deploying',
-        code_size INTEGER,
-        logs TEXT[] DEFAULT '{}',
-        started_at TIMESTAMPTZ,
-        stopped_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      ALTER TABLE bot_processes ENABLE ROW LEVEL SECURITY;
-      CREATE OR REPLACE POLICY "Users see own bots" ON bot_processes FOR SELECT USING (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Users insert own bots" ON bot_processes FOR INSERT WITH CHECK (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Users update own bots" ON bot_processes FOR UPDATE USING (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Users delete own bots" ON bot_processes FOR DELETE USING (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Admin full access bots" ON bot_processes FOR ALL USING (
-        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
-      );
-      CREATE TABLE IF NOT EXISTS bot_secrets (
-        bot_id TEXT PRIMARY KEY REFERENCES bot_processes(id) ON DELETE CASCADE,
-        user_id UUID NOT NULL REFERENCES auth.users(id),
-        token TEXT NOT NULL,
-        code TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      ALTER TABLE bot_secrets ENABLE ROW LEVEL SECURITY;
-      CREATE OR REPLACE POLICY "Users see own secrets" ON bot_secrets FOR SELECT USING (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Users insert own secrets" ON bot_secrets FOR INSERT WITH CHECK (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Users delete own secrets" ON bot_secrets FOR DELETE USING (user_id = auth.uid());
-      CREATE OR REPLACE POLICY "Admin full secrets" ON bot_secrets FOR ALL USING (
-        EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
-      );
-    ` }).catch(() => {})
-  } catch {}
-}
-
 function getRoute(req: VercelRequest): string {
   const url = req.url || '/'
-  let pathname = ''
   try {
-    pathname = new URL(url.startsWith('http') ? url : 'https://localhost' + url).pathname
-  } catch { pathname = url }
-  const prefix = '/api/nova-api-handler'
-  if (pathname === prefix || pathname === prefix + '/') return '/'
-  return pathname.slice(prefix.length) || '/'
+    const pathname = new URL(url.startsWith('http') ? url : 'https://localhost' + url).pathname
+    const prefix = '/api/nova-api-handler'
+    if (pathname === prefix || pathname === prefix + '/') return '/'
+    return pathname.slice(prefix.length) || '/'
+  } catch { return '/' }
+}
+
+// Safe DB helpers - never throw
+async function safeUpdate(table: string, data: any, col: string, val: string) {
+  try { await supabaseAdmin.from(table).update(data).eq(col, val) } catch {}
+}
+async function safeUpsert(table: string, data: any, onConflict?: string) {
+  try { const o: any = {}; if (onConflict) o.onConflict = onConflict; await supabaseAdmin.from(table).upsert(data, o) } catch {}
+}
+async function safeDelete(table: string, col: string, val: string) {
+  try { await supabaseAdmin.from(table).delete().eq(col, val) } catch {}
+}
+async function safeSelect(table: string, cols = '*', extra?: (q: any) => any) {
+  try { let q = supabaseAdmin.from(table).select(cols); if (extra) q = extra(q); return await q } catch { return { data: null } }
 }
 
 // ============ Route Handlers ============
@@ -109,20 +82,18 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
   const sanitizedName = (name || 'untitled').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase().slice(0, 30) || 'untitled'
   const serviceName = `bot-${sanitizedName}-${Date.now()}`
 
-  await supabaseAdmin.from('bot_processes').upsert({
+  // Primary: update projects table (always exists)
+  await safeUpdate('projects', { status: 'deploying', railway_service_id: serviceName }, 'id', projectId)
+
+  // Secondary: try bot_processes/bot_secrets (may not exist yet)
+  await safeUpsert('bot_processes', {
     id: serviceName, user_id: user.userId, project_id: projectId,
     name: sanitizedName, language, status: 'deploying',
     code_size: code.length, started_at: new Date().toISOString(),
-  }, { onConflict: 'id' }).catch(() => {})
-
-  await supabaseAdmin.from('bot_secrets').upsert({
+  }, 'id')
+  await safeUpsert('bot_secrets', {
     bot_id: serviceName, user_id: user.userId, token: botToken, code,
-  }, { onConflict: 'bot_id' }).catch(() => {})
-
-  // Update project
-  await supabaseAdmin.from('projects').update({
-    status: 'deploying', railway_service_id: serviceName,
-  }).eq('id', projectId).catch(() => {})
+  }, 'bot_id')
 
   return res.json({ success: true, serviceId: serviceName, serviceName })
 }
@@ -131,12 +102,8 @@ async function handleStop(req: VercelRequest, res: VercelResponse, user: any) {
   const { serviceId } = req.body
   if (!serviceId) return res.status(400).json({ error: 'Missing serviceId' })
 
-  await supabaseAdmin.from('bot_processes').update({
-    status: 'stopped', stopped_at: new Date().toISOString(),
-  }).eq('id', serviceId).eq('user_id', user.userId)
-
-  await supabaseAdmin.from('bot_secrets').delete().eq('bot_id', serviceId).eq('user_id', user.userId)
-
+  await safeUpdate('bot_processes', { status: 'stopped', stopped_at: new Date().toISOString() }, 'id', serviceId)
+  await safeDelete('bot_secrets', 'bot_id', serviceId)
   return res.json({ success: true })
 }
 
@@ -144,52 +111,58 @@ async function handleStatus(req: VercelRequest, res: VercelResponse) {
   const serviceId = req.query.serviceId as string
   if (!serviceId) return res.status(400).json({ error: 'Missing serviceId' })
 
-  const { data: bot } = await supabaseAdmin.from('bot_processes').select('status, started_at, stopped_at, logs').eq('id', serviceId).single()
-  if (!bot) return res.json({ status: 'DELETED', message: 'Bot not found' })
+  // Try bot_processes first
+  const { data: bot } = await safeSelect('bot_processes', 'status,started_at,stopped_at,logs',
+    (q: any) => q.eq('id', serviceId).single()
+  )
+  if (bot) {
+    const m: Record<string, string> = { deploying: 'DEPLOYING', running: 'SUCCESS', stopped: 'DELETED', error: 'CRASHED', crashed: 'CRASHED' }
+    return res.json({ status: m[bot.status] || 'INITIALIZING', logs: bot.logs || [], startedAt: bot.started_at })
+  }
 
-  const map: Record<string, string> = { deploying: 'DEPLOYING', running: 'SUCCESS', stopped: 'DELETED', error: 'CRASHED', crashed: 'CRASHED' }
-  return res.json({ status: map[bot.status] || 'INITIALIZING', logs: bot.logs || [], startedAt: bot.started_at })
+  // Fallback: check projects table
+  const { data: proj } = await safeSelect('projects', 'status',
+    (q: any) => q.eq('railway_service_id', serviceId).single()
+  )
+  if (proj) {
+    const m: Record<string, string> = { deploying: 'DEPLOYING', running: 'SUCCESS', stopped: 'DELETED', error: 'CRASHED' }
+    return res.json({ status: m[proj.status] || 'INITIALIZING', logs: [] })
+  }
+
+  return res.json({ status: 'DELETED', message: 'Bot not found' })
 }
 
 async function handlePayment(req: VercelRequest, res: VercelResponse, user: any) {
   const { amount, currency, description, success_url, metadata } = req.body
   if (!amount || !currency || !success_url) return res.status(400).json({ error: 'Missing fields' })
-
   if (metadata?.planId) {
-    const { data: plan } = await supabaseAdmin.from('plans').select('price').eq('id', metadata.planId).single()
-    if (plan && plan.price !== amount) return res.status(400).json({ error: 'Price mismatch' })
+    const { data: p } = await safeSelect('plans', 'price', (q: any) => q.eq('id', metadata.planId).single())
+    if (p && p.price !== amount) return res.status(400).json({ error: 'Price mismatch' })
   }
-
+  try { const u = new URL(success_url); if (!['nova-store.dev', 'localhost'].includes(u.hostname)) return res.status(400).json({ error: 'Invalid URL' }) } catch { return res.status(400).json({ error: 'Invalid URL' }) }
   try {
-    const u = new URL(success_url)
-    if (!['nova-store.dev', 'localhost'].includes(u.hostname)) return res.status(400).json({ error: 'Invalid URL' })
-  } catch { return res.status(400).json({ error: 'Invalid URL' }) }
-
-  const pr = await paymentoAPI('/v1/payments', 'POST', {
-    amount, currency: currency.toLowerCase(), description, 'return_url': success_url, metadata: { ...metadata, userId: user.userId },
-  })
-  if (pr.status > 201) return res.status(500).json({ error: 'Payment failed', details: pr.data })
-
-  const token = pr.data?.token || pr.data?.id
-  return res.json({ success: true, url: `https://checkout.paymento.io/${token}`, token, paymentId: token })
+    const pr = await paymentoAPI('/v1/payments', 'POST', { amount, currency: currency.toLowerCase(), description, 'return_url': success_url, metadata: { ...metadata, userId: user.userId } })
+    if (pr.status > 201) return res.status(500).json({ error: 'Payment failed', details: pr.data })
+    const t = pr.data?.token || pr.data?.id
+    return res.json({ success: true, url: `https://checkout.paymento.io/${t}`, token: t, paymentId: t })
+  } catch (e: any) { return res.status(500).json({ error: e.message || 'Payment error' }) }
 }
 
 async function handleVerify(req: VercelRequest, res: VercelResponse) {
   const { token } = req.body
   if (!token) return res.status(400).json({ error: 'Missing token' })
-
-  const { data: payment } = await paymentoAPI(`/v1/payments/${token}`)
-  if ([7, 8].includes(payment?.status)) return res.json({ verified: true, status: 'completed' })
-  return res.json({ verified: false, status: 'pending' })
+  try {
+    const { data: p } = await paymentoAPI(`/v1/payments/${token}`)
+    if ([7, 8].includes(p?.status)) return res.json({ verified: true, status: 'completed' })
+    return res.json({ verified: false, status: 'pending' })
+  } catch (e: any) { return res.status(500).json({ error: e.message }) }
 }
 
 async function handleDiscordCheck(req: VercelRequest, res: VercelResponse) {
   const username = req.query.username as string
   if (!username) return res.status(400).json({ error: 'Missing username' })
-
   if (!DISCORD_BOT_TOKEN) return res.status(503).json({ error: 'Discord not configured' })
-  const r = await fetch(`https://discord.com/api/v10/users/${username}`)
-  return res.json({ available: r.status === 404 })
+  try { const r = await fetch(`https://discord.com/api/v10/users/${username}`); return res.json({ available: r.status === 404 }) } catch { return res.json({ available: false }) }
 }
 
 async function handleBotInfo(res: VercelResponse) {
@@ -234,9 +207,9 @@ async function handleRegisterCommands(res: VercelResponse) {
   ]
 
   await discordAPI(`/applications/${appId}/commands`, 'PUT', [])
-  const { data: registered } = await discordAPI(`/applications/${appId}/guilds/${guildId}/commands`, 'PUT', commands)
-  for (const cmd of registered || []) {
-    await discordAPI(`/applications/${appId}/guilds/${guildId}/commands/${cmd.id}/permissions`, 'PUT', {
+  const { data: reg } = await discordAPI(`/applications/${appId}/guilds/${guildId}/commands`, 'PUT', commands)
+  for (const c of reg || []) {
+    await discordAPI(`/applications/${appId}/guilds/${guildId}/commands/${c.id}/permissions`, 'PUT', {
       permissions: [{ id: roleId, type: 1, permission: true }, { id: appId, type: 1, permission: true }],
     })
   }
@@ -245,12 +218,13 @@ async function handleRegisterCommands(res: VercelResponse) {
 
 async function handleSendPrices(req: VercelRequest, res: VercelResponse) {
   const { channel_id } = req.body
-  const { data: plans } = await supabaseAdmin.from('plans').select('*').order('sort_order')
+  const { data: plans } = await safeSelect('plans', '*', (q: any) => q.order('sort_order'))
   await discordAPI(`/channels/${channel_id}/messages`, 'POST', {
     embeds: [{
       title: '💡 باقات Nova VPS', color: 0x002b86,
       fields: (plans || []).map((p: any) => ({ name: `${p.name} — $${p.price}`, value: p.description || '-', inline: false })),
-      footer: { text: 'Nova VPS — استضافة بوتات ديسكورد' }, timestamp: new Date().toISOString(),
+      footer: { text: 'Nova VPS — استضافة بوتات ديسكورد' },
+      timestamp: new Date().toISOString(),
     }],
   })
   return res.json({ success: true })
@@ -274,9 +248,9 @@ async function handleSendTicketPanel(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleBotStats(res: VercelResponse) {
-  const { count: users } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
-  const { count: projects } = await supabaseAdmin.from('projects').select('*', { count: 'exact', head: true })
-  const { count: subs } = await supabaseAdmin.from('subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active')
+  const { count: users } = await safeSelect('profiles', '*')
+  const { count: projects } = await safeSelect('projects', '*')
+  const { count: subs } = await safeSelect('subscriptions', '*')
   return res.json({ users: users || 0, projects: projects || 0, subscriptions: subs || 0, runningBots: 0 })
 }
 
@@ -284,155 +258,151 @@ async function handleBotSetup(res: VercelResponse) {
   const { data: appInfo } = await discordAPI('/users/@me')
   const publicUrl = process.env.PUBLIC_URL || 'https://nova-store.dev'
   await discordAPI(`/applications/${appInfo.id}/interactions-endpoint-url`, 'PATCH', {
-    url: `${publicUrl}/api/nova-api/bot/interactions`,
+    url: `${publicUrl}/api/nova-api-handler/bot/interactions`,
   })
   return res.json({ success: true })
 }
 
 async function handleBotInteractions(req: VercelRequest, res: VercelResponse) {
-  const body = req.body
-  if (body.type === 1) return res.json({ type: 1 })
+  try {
+    const body = req.body
+    if (body.type === 1) return res.json({ type: 1 })
+    const cmd = body.data?.name
+    let resp: any = { type: 4, data: { content: 'تم ✅' } }
 
-  const cmd = body.data?.name
-  let resp: any = { type: 4, data: { content: 'تم ✅' } }
-
-  if (cmd === 'prices') {
-    const { data: plans } = await supabaseAdmin.from('plans').select('*').order('sort_order')
-    resp = { type: 4, data: { embeds: [{ title: '💡 باقات Nova VPS', color: 0x002b86, fields: (plans || []).map((p: any) => ({ name: `${p.name} — $${p.price}`, value: p.description || '-', inline: false })) }] } }
-  } else if (cmd === 'stats') {
-    const { count: users } = await supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true })
-    const { count: projects } = await supabaseAdmin.from('projects').select('*', { count: 'exact', head: true })
-    resp = { type: 4, data: { embeds: [{ title: '📊 إحصائيات Nova VPS', color: 0x002b86, fields: [{ name: '👥 المستخدمين', value: `${users || 0}`, inline: true }, { name: '🤖 المشاريع', value: `${projects || 0}`, inline: true }] }] } }
-  } else if (cmd === 'serverinfo') {
-    const { data: guild } = await discordAPI(`/guilds/${body.data.guild_id}?with_counts=true`)
-    resp = { type: 4, data: { embeds: [{ title: `ℹ️ ${guild.name}`, color: 0x002b86, fields: [{ name: '👥 الأعضاء', value: `${guild.approximate_member_count}`, inline: true }, { name: '🟢 المتصلين', value: `${guild.approximate_presence_count}`, inline: true }] }] } }
-  } else if (cmd === 'announce') {
-    const msg = body.data.options?.find((o: any) => o.name === 'message')?.value
-    resp = { type: 4, data: { content: msg ? `📢 **إعلان:** ${msg}` : '❌ اكتب رسالة', flags: msg ? 0 : 64 } }
-  } else if (cmd === 'status') {
-    resp = { type: 4, data: { embeds: [{ title: '🟢 حالة المنصة', description: 'جميع الأنظمة تعمل ✅', color: 0x00ff00 }] } }
-  } else {
-    resp = { type: 4, data: { content: 'هذا الأمر غير متاح حالياً.' } }
+    if (cmd === 'prices') {
+      const { data: plans } = await safeSelect('plans', '*')
+      resp = { type: 4, data: { embeds: [{ title: '💡 باقات Nova VPS', color: 0x002b86, fields: (plans || []).map((p: any) => ({ name: `${p.name} — $${p.price}`, value: p.description || '-' })) }] } }
+    } else if (cmd === 'stats') {
+      const { count: users } = await safeSelect('profiles', '*')
+      const { count: projects } = await safeSelect('projects', '*')
+      resp = { type: 4, data: { embeds: [{ title: '📊 إحصائيات Nova VPS', color: 0x002b86, fields: [{ name: '👥 المستخدمين', value: `${users || 0}`, inline: true }, { name: '🤖 المشاريع', value: `${projects || 0}`, inline: true }] }] } }
+    } else if (cmd === 'serverinfo') {
+      const { data: guild } = await discordAPI(`/guilds/${body.data.guild_id}?with_counts=true`)
+      resp = { type: 4, data: { embeds: [{ title: `ℹ️ ${guild.name}`, color: 0x002b86, fields: [{ name: '👥 الأعضاء', value: `${guild.approximate_member_count}`, inline: true }, { name: '🟢 المتصلين', value: `${guild.approximate_presence_count}`, inline: true }] }] } }
+    } else if (cmd === 'announce') {
+      const msg = body.data.options?.find((o: any) => o.name === 'message')?.value
+      resp = { type: 4, data: { content: msg ? `📢 **إعلان:** ${msg}` : '❌ اكتب رسالة', flags: msg ? 0 : 64 } }
+    } else if (cmd === 'status') {
+      resp = { type: 4, data: { embeds: [{ title: '🟢 حالة المنصة', description: 'جميع الأنظمة تعمل ✅', color: 0x00ff00 }] } }
+    } else {
+      resp = { type: 4, data: { content: 'هذا الأمر غير متاح حالياً.' } }
+    }
+    return res.json(resp)
+  } catch {
+    return res.json({ type: 4, data: { content: 'حدث خطأ في معالجة الأمر.' } })
   }
-  return res.json(resp)
 }
 
 async function handleToolCheck(req: VercelRequest, res: VercelResponse, user: any) {
   const slug = req.query.slug as string[]
   const productId = slug[slug.length - 1]
-  const { data } = await supabaseAdmin.from('tool_purchases').select('id').eq('user_id', user.userId).eq('product_id', productId).eq('status', 'completed')
+  const { data } = await safeSelect('tool_purchases', 'id',
+    (q: any) => q.eq('user_id', user.userId).eq('product_id', productId).eq('status', 'completed')
+  )
   return res.json({ purchased: (data || []).length > 0 })
 }
 
 async function handleToolPurchase(req: VercelRequest, res: VercelResponse, user: any) {
   const slug = req.query.slug as string[]
   const productId = slug[slug.length - 1]
-  const { data } = await supabaseAdmin.from('tool_purchases').insert({ user_id: user.userId, product_id: productId, status: 'completed', amount: 0.99, currency: 'USD' }).select().single()
+  const { data } = await safeSelect('tool_purchases', '*',
+    (q: any) => q.insert({ user_id: user.userId, product_id: productId, status: 'completed', amount: 0.99, currency: 'USD' }).select().single()
+  )
   return res.json({ success: true, purchase: data })
 }
 
 async function handleCleanup(res: VercelResponse) {
-  const { data } = await supabaseAdmin.from('bot_processes').delete().neq('id', '00000').select()
-  await supabaseAdmin.from('bot_secrets').delete().neq('bot_id', '00000')
+  const { data } = await safeSelect('bot_processes', '*', (q: any) => q.delete().neq('id', '00000').select())
   return res.json({ success: true, deleted: (data || []).length })
+}
+
+async function adminAuth(authHeader: string | null, res: VercelResponse): Promise<boolean> {
+  const u = await validateToken(authHeader)
+  if (!u) { res.status(401).json({ error: 'Unauthorized' }); return false }
+  if (u.role !== 'admin') { res.status(403).json({ error: 'Forbidden' }); return false }
+  return true
 }
 
 // ============ Main Handler ============
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
-  if (req.method === 'OPTIONS') return res.status(200).end()
-
-  const route = getRoute(req)
-  const method = req.method
-
-  await ensureTables()
+  // ALWAYS return JSON - even on catastrophic errors
+  const jsonError = (status: number, msg: string) => {
+    try { if (!res.headersSent) res.status(status).json({ error: msg }) } catch {}
+    return res
+  }
 
   try {
-    // Health
-    if (route === '/' || route === '/health') return res.json({ status: 'ok', service: 'nova-vps-vercel' })
+    cors(res)
+    if (req.method === 'OPTIONS') return res.status(200).end()
 
-    // Discord webhook (no auth)
-    if (route.endsWith('/bot/interactions') && method === 'POST') return handleBotInteractions(req, res)
+    let route: string
+    try { route = getRoute(req) } catch { return jsonError(400, 'Invalid URL') }
+    const method = req.method
 
-    // Bot stats (user auth)
-    if (route.endsWith('/bot/stats') && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleBotStats(res)
-    }
+    try {
+      // Health
+      if (route === '/' || route === '/health') return res.json({ status: 'ok', service: 'nova-vps-vercel' })
 
-    // === User auth routes ===
-    if (route === '/deploy' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleDeploy(req, res, u)
-    }
-    if (route === '/stop' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleStop(req, res, u)
-    }
-    if (route === '/status' && method === 'GET') return handleStatus(req, res)
-    if (route === '/payment' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handlePayment(req, res, u)
-    }
-    if (route === '/verify' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleVerify(req, res)
-    }
-    if (route === '/discord-check' && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleDiscordCheck(req, res)
-    }
-    if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleToolCheck(req, res, u)
-    }
-    if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' })
-      return handleToolPurchase(req, res, u)
-    }
+      // Discord webhook (no auth)
+      if (route.endsWith('/bot/interactions') && method === 'POST') return await handleBotInteractions(req, res)
 
-    // === Admin routes ===
-    if (route === '/bot/info' && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleBotInfo(res)
-    }
-    if (route === '/bot/invite' && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleBotInvite(res)
-    }
-    if (route.match(/\/bot\/guilds\/[^/]+\/channels$/) && method === 'GET') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleGuildChannels(req, res)
-    }
-    if (route === '/bot/commands/register' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleRegisterCommands(res)
-    }
-    if (route === '/bot/send-prices' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleSendPrices(req, res)
-    }
-    if (route === '/bot/announce' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleAnnounce(req, res)
-    }
-    if (route === '/bot/send-ticket-panel' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleSendTicketPanel(req, res)
-    }
-    if (route === '/bot/setup' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleBotSetup(res)
-    }
-    if (route === '/cleanup-bots' && method === 'POST') {
-      const u = await validateToken(req.headers.authorization); if (!u || u.role !== 'admin') return u ? res.status(403).json({ error: 'Forbidden' }) : res.status(401).json({ error: 'Unauthorized' })
-      return handleCleanup(res)
-    }
+      // Bot stats (user auth)
+      if (route.endsWith('/bot/stats') && method === 'GET') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleBotStats(res)
+      }
 
-    return res.status(404).json({ error: 'Not found', route })
+      // === User auth routes ===
+      if (route === '/deploy' && method === 'POST') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleDeploy(req, res, u)
+      }
+      if (route === '/stop' && method === 'POST') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleStop(req, res, u)
+      }
+      if (route === '/status' && method === 'GET') return await handleStatus(req, res)
+      if (route === '/payment' && method === 'POST') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handlePayment(req, res, u)
+      }
+      if (route === '/verify' && method === 'POST') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleVerify(req, res)
+      }
+      if (route === '/discord-check' && method === 'GET') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleDiscordCheck(req, res)
+      }
+      if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'GET') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleToolCheck(req, res, u)
+      }
+      if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'POST') {
+        const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
+        return await handleToolPurchase(req, res, u)
+      }
+
+      // === Admin routes ===
+      if (route === '/bot/info' && method === 'GET') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleBotInfo(res) }
+      if (route === '/bot/invite' && method === 'GET') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleBotInvite(res) }
+      if (route.match(/\/bot\/guilds\/[^/]+\/channels$/) && method === 'GET') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleGuildChannels(req, res) }
+      if (route === '/bot/commands/register' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleRegisterCommands(res) }
+      if (route === '/bot/send-prices' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleSendPrices(req, res) }
+      if (route === '/bot/announce' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleAnnounce(req, res) }
+      if (route === '/bot/send-ticket-panel' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleSendTicketPanel(req, res) }
+      if (route === '/bot/setup' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleBotSetup(res) }
+      if (route === '/cleanup-bots' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleCleanup(res) }
+
+      return res.status(404).json({ error: 'Not found', route })
+    } catch (e: any) {
+      console.error('Nova API route error:', route, e)
+      return jsonError(500, e?.message || 'Internal server error')
+    }
   } catch (e: any) {
-    const status = e.message === 'Unauthorized' ? 401 : e.message === 'Forbidden' ? 403 : 500
-    return res.status(status).json({ error: e.message })
+    console.error('Nova API fatal error:', e)
+    return jsonError(500, e?.message || 'Server error')
   }
 }

@@ -463,7 +463,18 @@ export default function ProjectEditor() {
         signal: AbortSignal.timeout(30000),
       });
 
-      const proxyData = await proxyRes.json();
+      let proxyData: any;
+      try {
+        proxyData = await proxyRes.json();
+      } catch {
+        const errText = await proxyRes.text().catch(() => proxyRes.statusText);
+        addLog('error', `Server error: ${errText.substring(0, 200)}`);
+        toast.error('Server error occurred', { duration: 6000 });
+        await supabase.from('projects').update({ status: 'error' }).eq('id', project.id);
+        setProject(prev => prev ? { ...prev, status: 'error' } : null);
+        setIsDeploying(false);
+        return;
+      }
 
       if (!proxyRes.ok || proxyData.error) {
         const errMsg = proxyData.error || t('editor.unknownError');
