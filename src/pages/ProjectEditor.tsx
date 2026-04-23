@@ -24,7 +24,7 @@ import {
   Timer, Activity, Shield, HardDrive, SquareTerminal,
 } from 'lucide-react';
 
-const PROXY_URL = 'https://nova-deploy-proxy-production.up.railway.app';
+const PROXY_URL = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
 
 const getAuthHeaders = async () => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -454,7 +454,8 @@ export default function ProjectEditor() {
         method: 'POST',
         headers: await getAuthHeaders(),
         body: JSON.stringify({
-          botName: project.name,
+          projectId: project.id,
+          name: project.name,
           botToken,
           language: project.language,
           code,

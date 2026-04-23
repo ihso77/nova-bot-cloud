@@ -284,7 +284,7 @@ export default function Admin() {
   };
 
   // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
-  const PROXY = import.meta.env.VITE_PROXY_URL || 'https://nova-deploy-proxy-production.up.railway.app';
+  const PROXY = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
   const botHeaders = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
   const botHeadersPost = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
 
