@@ -284,7 +284,7 @@ export default function Admin() {
   };
 
   // Discord Bot — uses Vercel Serverless API
-  const PROXY = '/api/nova-api';
+  const PROXY = '/api/nova-api-handler';
   const botHeaders = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
   const botHeadersPost = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
 

@@ -193,7 +193,7 @@ export default function DiscordUsernameChecker() {
     setCurrentUsername(username);
 
     try {
-      const res = await fetch(`/api/nova-api/discord-check?username=${encodeURIComponent(username)}`, {
+      const res = await fetch(`/api/nova-api-handler/discord-check?username=${encodeURIComponent(username)}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` },
       });
 

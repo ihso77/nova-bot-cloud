@@ -16,7 +16,7 @@ interface Plan {
   description: string;
 }
 
-const PAYMENT_PROXY_URL = '/api/nova-api/payment';
+const PAYMENT_PROXY_URL = '/api/nova-api-handler/payment';
 
 export default function Checkout() {
   const { t } = useTranslation();
