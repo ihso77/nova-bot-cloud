@@ -513,7 +513,18 @@
     "announcePlaceholder": "نص الإعلان...",
     "sendTicketPanelBtn": "ارسال بانل التيكيت",
     "couponTypePlaceholder": "النسبة (مثل: 50)",
-    "couponFixedPlaceholder": "المبلغ (مثل: 2)"
+    "couponFixedPlaceholder": "المبلغ (مثل: 2)",
+    "browseProjects": "تصفح المشاريع",
+    "searchUserOrEmail": "بحث بالبريد أو الاسم...",
+    "noUsersWithProjects": "لا يوجد مستخدمين لديهم مشاريع",
+    "viewProjects": "عرض المشاريع",
+    "backToUsers": "العودة للمستخدمين",
+    "backToProjects": "العودة للمشاريع",
+    "userProjects": "مشاريع المستخدم {{email}}",
+    "characters": "حرف",
+    "copied": "تم النسخ!",
+    "selectFile": "اختر ملفاً لعرض محتواه",
+    "emptyFile": "الملف فارغ"
   },
   "editor": {
     "files": "الملفات",

@@ -69,6 +69,7 @@ export default function Admin() {
     { id: 'settings', icon: Settings, label: t('admin.settings') },
     { id: 'plans-manage', icon: Crown, label: t('admin.managePlans') },
     { id: 'logs', icon: Activity, label: t('admin.logs') },
+    { id: 'browse-projects', icon: Eye, label: t('admin.browseProjects') },
   ];
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -133,6 +134,17 @@ export default function Admin() {
   // Server Logs
   const [logs, setLogs] = useState<any[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+
+  // Browse Projects
+  const [browseUsers, setBrowseUsers] = useState<any[]>([]);
+  const [browseUsersLoading, setBrowseUsersLoading] = useState(false);
+  const [browseSearch, setBrowseSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserProjects, setSelectedUserProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectFiles, setProjectFiles] = useState<any[]>([]);
+  const [selectedFile, setSelectedFile] = useState<any | null>(null);
+  const [browseLoading, setBrowseLoading] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -209,6 +221,69 @@ export default function Admin() {
     }
     setProjectsLoading(false);
   }, []);
+
+  // Browse Projects - load users who have projects
+  const loadBrowseUsers = useCallback(async () => {
+    setBrowseUsersLoading(true);
+    const { data: projectsData } = await supabase.from('projects').select('user_id').order('created_at', { ascending: false });
+    if (!projectsData) { setBrowseUsersLoading(false); return; }
+    
+    // Get unique user IDs
+    const uniqueUserIds = [...new Set(projectsData.map((p: any) => p.user_id))];
+    
+    // Get profiles for these users with project counts
+    const { data: profilesData } = await supabase.from('profiles').select('*').in('id', uniqueUserIds).order('created_at', { ascending: false });
+    if (!profilesData) { setBrowseUsersLoading(false); return; }
+
+    const enriched = await Promise.all(profilesData.map(async (p: any) => {
+      const { count } = await supabase.from('projects').select('id', { count: 'exact', head: true }).eq('user_id', p.id);
+      return {
+        id: p.id,
+        email: p.email || '',
+        display_name: p.display_name || '',
+        projects_count: count || 0,
+      };
+    }));
+    
+    setBrowseUsers(enriched);
+    setBrowseUsersLoading(false);
+  }, []);
+
+  const handleSelectBrowseUser = async (userId: string) => {
+    setSelectedUserId(userId);
+    setSelectedProjectId(null);
+    setProjectFiles([]);
+    setSelectedFile(null);
+    setBrowseLoading(true);
+    
+    const { data } = await supabase.from('projects').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+    setSelectedUserProjects(data || []);
+    setBrowseLoading(false);
+  };
+
+  const handleSelectProject = async (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setSelectedFile(null);
+    setBrowseLoading(true);
+    
+    const { data } = await supabase.from('project_files').select('*').eq('project_id', projectId).order('file_name');
+    setProjectFiles(data || []);
+    if (data && data.length > 0) setSelectedFile(data[0]);
+    setBrowseLoading(false);
+  };
+
+  const handleBackToUsers = () => {
+    setSelectedUserId(null);
+    setSelectedProjectId(null);
+    setProjectFiles([]);
+    setSelectedFile(null);
+  };
+
+  const handleBackToProjects = () => {
+    setSelectedProjectId(null);
+    setProjectFiles([]);
+    setSelectedFile(null);
+  };
 
   const loadGifts = useCallback(async () => {
     setGiftsLoading(true);
@@ -358,6 +433,7 @@ export default function Admin() {
   useEffect(() => {
     if (activeTab === 'users' && users.length === 0) loadUsers();
     if (activeTab === 'projects' && projects.length === 0) loadProjects();
+    if (activeTab === 'browse-projects' && browseUsers.length === 0) loadBrowseUsers();
     if (activeTab === 'gifts' && gifts.length === 0) loadGifts();
     if (activeTab === 'coupons' && coupons.length === 0) loadCoupons();
     if (activeTab === 'payments' && payments.length === 0) loadPayments();
@@ -431,6 +507,105 @@ export default function Admin() {
   const formatDate = (d: string) => {
     if (!d) return '-';
     return new Date(d).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Browse Projects UI helper
+  const renderBrowseProjects = () => {
+    const filteredBrowse = browseUsers.filter(u =>
+      u.email.toLowerCase().includes(browseSearch.toLowerCase()) ||
+      (u.display_name && u.display_name.toLowerCase().includes(browseSearch.toLowerCase()))
+    );
+    return (
+      <motion.div key="browse-projects" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2">
+            {selectedProjectId ? (
+              <Button size="sm" variant="ghost" onClick={handleBackToProjects}><ArrowLeft className="w-4 h-4 ml-1" /> {t('admin.backToProjects')}</Button>
+            ) : selectedUserId ? (
+              <Button size="sm" variant="ghost" onClick={handleBackToUsers}><ArrowLeft className="w-4 h-4 ml-1" /> {t('admin.backToUsers')}</Button>
+            ) : null}
+            <h2 className="text-xl sm:text-2xl font-bold gradient-text">{t('admin.browseProjects')}</h2>
+          </div>
+          <Button size="sm" variant="outline" onClick={loadBrowseUsers}><Monitor className="w-4 h-4 ml-1" /> {t('admin.update')}</Button>
+        </div>
+        {browseLoading ? (
+          <div className="flex justify-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        ) : !selectedUserId ? (
+          <>
+            <div className="relative mb-4">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder={t('admin.searchUserOrEmail')} value={browseSearch} onChange={e => setBrowseSearch(e.target.value)} className="pr-10 bg-secondary/50" />
+            </div>
+            <div className="glass rounded-xl overflow-hidden">
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b border-border/30">
+                <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.user')}</th>
+                <th className="px-4 py-3 text-right text-muted-foreground font-semibold">{t('admin.email')}</th>
+                <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.projectsCount')}</th>
+                <th className="px-4 py-3 text-center text-muted-foreground font-semibold">{t('admin.actions')}</th>
+              </tr></thead><tbody>
+                {filteredBrowse.map((u, i) => (
+                  <motion.tr key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                    className="border-b border-border/20 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => handleSelectBrowseUser(u.id)}>
+                    <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center flex-shrink-0"><UserIcon className="w-4 h-4 text-primary-foreground" /></div><span className="font-medium truncate max-w-[150px]">{u.display_name || t('admin.withoutName')}</span></div></td>
+                    <td className="px-4 py-3 text-muted-foreground truncate max-w-[200px]" dir="ltr">{u.email}</td>
+                    <td className="px-4 py-3 text-center"><Badge variant="secondary">{u.projects_count}</Badge></td>
+                    <td className="px-4 py-3 text-center"><Button size="sm" variant="outline" className="text-xs gap-1" disabled={u.projects_count === 0}><Eye className="w-3.5 h-3.5" /> {t('admin.viewProjects')}</Button></td>
+                  </motion.tr>
+                ))}
+              </tbody></table></div>
+              {filteredBrowse.length === 0 && <div className="text-center py-12 text-muted-foreground">{t('admin.noUsersWithProjects')}</div>}
+            </div>
+          </>
+        ) : !selectedProjectId ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t('admin.userProjects', { email: browseUsers.find(u => u.id === selectedUserId)?.email || '' })}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {selectedUserProjects.map((p: any) => (
+                <motion.div key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="glass rounded-xl p-4 hover:bg-secondary/30 cursor-pointer transition-colors" onClick={() => handleSelectProject(p.id)}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${p.language === 'python' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400'}`}><FileCode2 className="w-4 h-4" /></div>
+                    <div className="flex-1 min-w-0"><p className="font-semibold text-sm truncate">{p.name}</p><p className="text-xs text-muted-foreground">{p.language}</p></div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Badge className={p.status === 'running' ? 'bg-green-500/20 text-green-400' : p.status === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}>{p.status}</Badge>
+                    <span className="text-xs text-muted-foreground">{formatDate(p.created_at)}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            {selectedUserProjects.length === 0 && <div className="text-center py-12 text-muted-foreground">{t('admin.noProjects')}</div>}
+          </div>
+        ) : (
+          <div className="flex gap-3 h-[calc(100vh-200px)]">
+            <div className="w-56 flex-shrink-0 glass rounded-xl overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-border/30"><p className="text-xs font-semibold text-muted-foreground">{t('admin.files')} ({projectFiles.length})</p></div>
+              <div className="flex-1 overflow-y-auto">
+                {projectFiles.map((f: any) => (
+                  <button key={f.id} onClick={() => setSelectedFile(f)} className={`w-full text-right px-3 py-2 text-sm transition-colors hover:bg-secondary/50 ${selectedFile?.id === f.id ? 'bg-primary/10 text-primary border-r-2 border-primary' : 'text-muted-foreground'}`}>
+                    <div className="flex items-center gap-2"><FileCode2 className="w-3.5 h-3.5 flex-shrink-0" /><span className="truncate" dir="ltr">{f.file_name}</span></div>
+                  </button>
+                ))}
+                {projectFiles.length === 0 && <div className="text-center py-8 text-xs text-muted-foreground">{t('admin.noFiles')}</div>}
+              </div>
+            </div>
+            <div className="flex-1 glass rounded-xl overflow-hidden flex flex-col">
+              {selectedFile ? (
+                <>
+                  <div className="p-3 border-b border-border/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2"><FileCode2 className="w-4 h-4 text-primary" /><span className="font-semibold text-sm" dir="ltr">{selectedFile.file_name}</span><Badge variant="secondary" className="text-xs">{(selectedFile.content?.length || 0).toLocaleString()} {t('admin.characters')}</Badge></div>
+                    <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => { navigator.clipboard.writeText(selectedFile.content || ''); toast.success(t('admin.copied')); }}><Sparkles className="w-3 h-3" /> {t('admin.copy')}</Button>
+                  </div>
+                  <div className="flex-1 overflow-auto p-4" dir="ltr"><pre className="text-sm font-mono text-foreground/90 whitespace-pre-wrap break-all leading-relaxed bg-black/20 rounded-lg p-4">{selectedFile.content || t('admin.emptyFile')}</pre></div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground"><div className="text-center"><FileCode2 className="w-12 h-12 mx-auto mb-3 opacity-20" /><p>{t('admin.selectFile')}</p></div></div>
+              )}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    );
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center pt-16"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
@@ -1420,8 +1595,13 @@ export default function Admin() {
               )}
             </motion.div>
           )}
+
+          {/* Browse Projects */}
+          {activeTab === 'browse-projects' && renderBrowseProjects()}
         </AnimatePresence>
       </div>
     </div>
   );
 }
+
+export default Admin;

@@ -508,7 +508,18 @@
     "announcePlaceholder": "Announcement text...",
     "sendTicketPanelBtn": "Send Ticket Panel",
     "couponTypePlaceholder": "Percentage (e.g. 50)",
-    "couponFixedPlaceholder": "Amount (e.g. 2)"
+    "couponFixedPlaceholder": "Amount (e.g. 2)",
+    "browseProjects": "Browse Projects",
+    "searchUserOrEmail": "Search by email or name...",
+    "noUsersWithProjects": "No users with projects found",
+    "viewProjects": "View Projects",
+    "backToUsers": "Back to Users",
+    "backToProjects": "Back to Projects",
+    "userProjects": "Projects of user {{email}}",
+    "characters": "characters",
+    "copied": "Copied!",
+    "selectFile": "Select a file to view its content",
+    "emptyFile": "File is empty"
   },
   "editor": {
     "files": "Files",
