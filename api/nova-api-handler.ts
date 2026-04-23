@@ -109,7 +109,8 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
   const codeB64 = Buffer.from(finalCode).toString('base64')
 
   try {
-    // 0. Delete existing service with same name if it exists
+    // 0. Check if service with same name already exists → reuse it (avoid hitting creation limit)
+    let serviceId: string | null = null
     try {
       const allSvcs = await railwayGQL(`
         query($p: String!) {
@@ -118,21 +119,23 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       `, { p: NOVA_PROJECT_ID })
       const existing = allSvcs.project?.services?.edges?.find((e: any) => e.node?.name === svcName)
       if (existing?.node?.id) {
-        await railwayGQL(`mutation($id: String!) { serviceDelete(id: $id) }`, { id: existing.node.id })
-        await new Promise(r => setTimeout(r, 2000))
+        serviceId = existing.node.id
+        console.log(`Reusing existing service: ${serviceId}`)
       }
-    } catch (delErr: any) {
-      console.warn('Delete existing service warn:', delErr.message)
+    } catch (findErr: any) {
+      console.warn('Find existing service warn:', findErr.message)
     }
 
-    // 1. Create service from pre-built runner repo
-    const d = await railwayGQL(`
-      mutation($p: String!, $n: String!, $r: String!) {
-        s: serviceCreate(input: { projectId: $p, name: $n, source: { repo: $r } }) { id }
-      }
-    `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
-    const serviceId = d.s?.id
-    if (!serviceId) throw new Error('Failed to create Railway service')
+    // 1. Create service only if it doesn't exist
+    if (!serviceId) {
+      const d = await railwayGQL(`
+        mutation($p: String!, $n: String!, $r: String!) {
+          s: serviceCreate(input: { projectId: $p, name: $n, source: { repo: $r } }) { id }
+        }
+      `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
+      serviceId = d.s?.id
+      if (!serviceId) throw new Error('Failed to create Railway service')
+    }
 
     // 2. Set BOT_CODE_B64 env var (skip auto-deploy)
     await railwayGQL(`
@@ -190,15 +193,15 @@ async function handleStop(req: VercelRequest, res: VercelResponse, user: any) {
   if (!serviceId) return res.status(400).json({ error: 'Missing serviceId' })
 
   try {
-    // Delete the Railway service
+    // Delete the Railway service to free resources
     await railwayGQL(`mutation($id: String!) { serviceDelete(id: $id) }`, { id: serviceId })
   } catch (err: any) {
     console.warn('Railway stop error:', err.message)
     // Continue even if Railway delete fails
   }
 
-  // Update DB status
-  await safeUpdate('projects', { status: 'stopped', railway_service_id: null }, 'railway_service_id', serviceId)
+  // Update DB status - keep serviceId so deploy can reuse it
+  await safeUpdate('projects', { status: 'stopped' }, 'railway_service_id', serviceId)
   return res.json({ success: true })
 }
 
