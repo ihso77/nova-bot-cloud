@@ -155,7 +155,7 @@ export default function Auth() {
           className="flex flex-col items-center mb-8"
         >
           <motion.div
-            animate={{ boxShadow: ['0 0 20px -5px hsl(265 90% 60% / 0.3)', '0 0 40px -5px hsl(265 90% 60% / 0.5)', '0 0 20px -5px hsl(265 90% 60% / 0.3)'] }}
+            animate={{ boxShadow: ['0 0 20px -5px hsl(215 90% 55% / 0.3)', '0 0 40px -5px hsl(215 90% 55% / 0.5)', '0 0 20px -5px hsl(215 90% 55% / 0.3)'] }}
             transition={{ duration: 3, repeat: Infinity }}
             className="w-16 h-16 rounded-2xl bg-[#002b86] flex items-center justify-center mb-4"
           >

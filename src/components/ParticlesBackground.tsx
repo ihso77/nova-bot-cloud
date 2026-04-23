@@ -16,7 +16,7 @@ export default function ParticlesBackground() {
         transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsl(265 90% 60% / 0.12) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, hsl(215 90% 55% / 0.12) 0%, transparent 70%)',
           filter: 'blur(80px)',
         }}
       />
@@ -29,7 +29,7 @@ export default function ParticlesBackground() {
         transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute -bottom-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsl(280 80% 65% / 0.10) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, hsl(195 85% 55% / 0.10) 0%, transparent 70%)',
           filter: 'blur(80px)',
         }}
       />
@@ -41,7 +41,7 @@ export default function ParticlesBackground() {
         transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute top-[40%] left-[30%] w-[30vw] h-[30vw] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsl(265 90% 60% / 0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, hsl(215 90% 55% / 0.06) 0%, transparent 70%)',
           filter: 'blur(60px)',
         }}
       />
@@ -51,8 +51,8 @@ export default function ParticlesBackground() {
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `
-            linear-gradient(hsl(265 90% 60% / 0.3) 1px, transparent 1px),
-            linear-gradient(90deg, hsl(265 90% 60% / 0.3) 1px, transparent 1px)
+            linear-gradient(hsl(215 90% 55% / 0.3) 1px, transparent 1px),
+            linear-gradient(90deg, hsl(215 90% 55% / 0.3) 1px, transparent 1px)
           `,
           backgroundSize: '60px 60px',
         }}

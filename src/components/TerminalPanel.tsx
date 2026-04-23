@@ -157,9 +157,9 @@ const TerminalPanel = forwardRef<TerminalPanelHandle, TerminalPanelProps>(({ ser
       theme: {
         background: '#0a0a0f',
         foreground: '#e4e4e7',
-        cursor: '#a78bfa',
+        cursor: '#60a5fa',
         cursorAccent: '#0a0a0f',
-        selectionBackground: 'rgba(167, 139, 250, 0.3)',
+        selectionBackground: 'rgba(96, 165, 250, 0.3)',
         selectionForeground: '#ffffff',
         black: '#1a1a2e',
         red: '#f87171',

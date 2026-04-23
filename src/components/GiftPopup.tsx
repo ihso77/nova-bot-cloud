@@ -133,7 +133,7 @@ export default function GiftPopup() {
                   animate={{ opacity: 0, y: -80 - i * 20, scale: 0 }}
                   transition={{ delay: 0.3 + i * 0.1, duration: 1.5 }}
                   className="absolute top-0 left-1/2 w-2 h-2 rounded-full"
-                  style={{ backgroundColor: ['#a78bfa', '#f472b6', '#60a5fa', '#34d399', '#fbbf24', '#fb923c', '#c084fc', '#f87171'][i] }}
+                  style={{ backgroundColor: ['#60a5fa', '#22d3ee', '#3b82f6', '#34d399', '#fbbf24', '#fb923c', '#06b6d4', '#f87171'][i] }}
                 />
               ))}
 

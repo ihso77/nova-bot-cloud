@@ -538,7 +538,7 @@ export default function Admin() {
                 {[
                   { icon: Users, label: t('admin.totalUsers'), value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
                   { icon: Server, label: t('admin.totalProjects'), value: stats.projects, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/10' },
-                  { icon: CreditCard, label: t('admin.activeSubscriptions'), value: stats.subs, color: 'from-purple-500 to-pink-500', iconBg: 'bg-purple-500/10' },
+                  { icon: CreditCard, label: t('admin.activeSubscriptions'), value: stats.subs, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
                   { icon: Activity, label: t('admin.runningBots'), value: stats.running, color: 'from-yellow-500 to-orange-500', iconBg: 'bg-yellow-500/10' },
                 ].map((s, i) => (
                   <motion.div
@@ -669,7 +669,7 @@ export default function Admin() {
                             <td className="px-4 py-3 text-center"><Badge variant="secondary">{u.projects_count}</Badge></td>
                             <td className="px-4 py-3 text-center"><Badge variant="secondary">{u.subscriptions_count}</Badge></td>
                             <td className="px-4 py-3 text-center">
-                              <Badge className={u.role === 'admin' ? 'bg-purple-500/20 text-purple-400' : u.role === 'banned' ? 'bg-red-500/20 text-red-400' : 'bg-muted'}>
+                              <Badge className={u.role === 'admin' ? 'bg-blue-500/20 text-blue-400' : u.role === 'banned' ? 'bg-red-500/20 text-red-400' : 'bg-muted'}>
                                 {u.role === 'admin' ? t('admin.admin') : u.role === 'banned' ? t('admin.banned') : t('admin.user').toLowerCase()}
                               </Badge>
                             </td>
@@ -796,8 +796,8 @@ export default function Admin() {
                     <motion.div key={g.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
                       className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-5 h-5 text-purple-400" />
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                          <Gift className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{t('admin.giftOf')} {g.plan_name}</p>
@@ -1393,12 +1393,12 @@ export default function Admin() {
                         log.action_type === 'create' ? 'bg-green-500/10' :
                         log.action_type === 'delete' ? 'bg-red-500/10' :
                         log.action_type === 'update' ? 'bg-blue-500/10' :
-                        log.action_type === 'login' ? 'bg-purple-500/10' : 'bg-gray-500/10'
+                        log.action_type === 'login' ? 'bg-blue-500/10' : 'bg-gray-500/10'
                       }`}>
                         {log.action_type === 'create' ? <Plus className="w-4 h-4 text-green-400" /> :
                          log.action_type === 'delete' ? <Trash2 className="w-4 h-4 text-red-400" /> :
                          log.action_type === 'update' ? <Wrench className="w-4 h-4 text-blue-400" /> :
-                         log.action_type === 'login' ? <UserIcon className="w-4 h-4 text-purple-400" /> :
+                         log.action_type === 'login' ? <UserIcon className="w-4 h-4 text-blue-400" /> :
                          <Activity className="w-4 h-4 text-gray-400" />}
                       </div>
                       <div className="flex-1 min-w-0">

@@ -1193,7 +1193,7 @@ export default function ProjectEditor() {
             dir="rtl"
           >
             <div className="text-center mb-5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-500 flex items-center justify-center mx-auto mb-3">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <h2 className="text-lg font-bold">{t('editor.tokenDialog')}</h2>
