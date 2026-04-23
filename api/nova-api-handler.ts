@@ -186,12 +186,23 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       }
     `, { s: serviceId, e: NOVA_ENV_ID, c: startCmd })
 
-    // 4. Trigger deploy
-    await railwayGQL(`
-      mutation($s: String!, $e: String!) {
-        d: serviceInstanceDeploy(serviceId: $s, environmentId: $e)
-      }
-    `, { s: serviceId, e: NOVA_ENV_ID })
+    // 4. Restart service (not full deploy - avoids slow rebuild and cache issues)
+    try {
+      await railwayGQL(`
+        mutation($s: String!, $e: String!) {
+          d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
+        }
+      `, { s: serviceId, e: NOVA_ENV_ID })
+    } catch (restartErr: any) {
+      // Fallback to deploy if restart not available
+      try {
+        await railwayGQL(`
+          mutation($s: String!, $e: String!) {
+            d: serviceInstanceDeploy(serviceId: $s, environmentId: $e)
+          }
+        `, { s: serviceId, e: NOVA_ENV_ID })
+      } catch {}
+    }
 
     // 5. Update project in DB
     await safeUpdate('projects', { status: 'deploying', railway_service_id: serviceId }, 'id', projectId)
