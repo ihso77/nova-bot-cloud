@@ -433,8 +433,9 @@ export default function ProjectEditor() {
 
       const mainFile = allFiles.find(f =>
         f.file_name === 'index.js' || f.file_name === 'index.ts' ||
-        f.file_name === 'bot.py' || f.file_name === 'main.py' ||
-        f.file_name === 'main.js' || f.file_name === 'main.ts'
+        f.file_name === 'bot.py' || f.file_name === 'bot.js' ||
+        f.file_name === 'main.py' || f.file_name === 'main.js' ||
+        f.file_name === 'main.ts'
       );
 
       if (!mainFile) {

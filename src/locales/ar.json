@@ -547,7 +547,7 @@
     "deploy": "نشر",
     "invalidToken": "توكن Discord غير صالح",
     "noFiles": "لا توجد ملفات في المشروع",
-    "noMainFile": "لا يوجد ملف رئيسي (index.js أو bot.py)",
+    "noMainFile": "لا يوجد ملف رئيسي (index.js, bot.js, bot.py, main.js, main.py)",
     "connecting": "جاري الاتصال بالخادم...",
     "preparing": "جاري التحضير...",
     "building": "جاري بناء الصورة...",

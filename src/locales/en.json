@@ -542,7 +542,7 @@
     "deploy": "Deploy",
     "invalidToken": "Invalid Discord token",
     "noFiles": "No files in project",
-    "noMainFile": "No main file found (index.js or bot.py)",
+    "noMainFile": "No main file found (index.js, bot.js, bot.py, main.js, main.py)",
     "connecting": "Connecting to server...",
     "preparing": "Preparing...",
     "building": "Building image...",
