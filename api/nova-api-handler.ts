@@ -451,6 +451,68 @@ async function handleToolPurchase(req: VercelRequest, res: VercelResponse, user:
   return res.json({ success: true, purchase: data })
 }
 
+async function handleImportProject(req: VercelRequest, res: VercelResponse) {
+  const { serviceId, userEmail, projectName, language } = req.body
+  if (!serviceId || !userEmail) return res.status(400).json({ error: 'Missing serviceId or userEmail' })
+
+  try {
+    // 1. Get code from Railway env var BOT_CODE_B64
+    const varsData = await railwayGQL(`
+      query($p: String!, $e: String!, $s: String!) {
+        variables(projectId: $p, environmentId: $e, serviceId: $s)
+      }
+    `, { p: NOVA_PROJECT_ID, e: NOVA_ENV_ID, s: serviceId })
+    const variables = varsData.variables || {}
+    const codeB64 = variables.BOT_CODE_B64 || ''
+    if (!codeB64) return res.status(400).json({ error: 'No BOT_CODE_B64 found on this service' })
+
+    const decodedCode = Buffer.from(codeB64, 'base64').toString('utf-8')
+
+    // 2. Find or create profile
+    const { data: existingProfile } = await supabaseAdmin.from('profiles').select('id,email').eq('email', userEmail).maybeSingle()
+    let userId: string
+    if (existingProfile) {
+      userId = existingProfile.id
+    } else {
+      userId = crypto.randomUUID()
+      await supabaseAdmin.from('profiles').insert({
+        id: userId, user_id: userId, email: userEmail,
+        display_name: userEmail.split('@')[0],
+      })
+    }
+
+    // 3. Check if user_role exists, create if not
+    const { data: roleData } = await supabaseAdmin.from('user_roles').select('role').eq('user_id', userId).maybeSingle()
+    if (!roleData) {
+      await supabaseAdmin.from('user_roles').insert({ user_id: userId, role: 'user' })
+    }
+
+    // 4. Create project
+    const projectId = crypto.randomUUID()
+    const finalName = projectName || `imported-${serviceId.slice(0, 8)}`
+    const finalLang = language || 'javascript'
+    await supabaseAdmin.from('projects').insert({
+      id: projectId, user_id: userId, name: finalName,
+      language: finalLang, status: 'running',
+      railway_service_id: serviceId,
+    })
+
+    // 5. Create project file
+    const ext = finalLang === 'python' ? 'py' : 'js'
+    const fileName = `index.${ext}`
+    await supabaseAdmin.from('project_files').insert({
+      id: crypto.randomUUID(), project_id: projectId,
+      file_name: fileName, file_path: `/${fileName}`,
+      content: decodedCode,
+    })
+
+    return res.json({ success: true, projectId, userId, fileName })
+  } catch (err: any) {
+    console.error('Import project error:', err)
+    return res.status(500).json({ error: err.message || 'Import failed' })
+  }
+}
+
 async function handleCleanup(res: VercelResponse) {
   const { data } = await safeSelect('bot_processes', '*', (q: any) => q.delete().neq('id', '00000').select())
   return res.json({ success: true, deleted: (data || []).length })
@@ -534,6 +596,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (route === '/bot/send-ticket-panel' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleSendTicketPanel(req, res) }
       if (route === '/bot/setup' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleBotSetup(res) }
       if (route === '/cleanup-bots' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleCleanup(res) }
+      if (route === '/admin/import-project' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleImportProject(req, res) }
 
       return res.status(404).json({ error: 'Not found', route })
     } catch (e: any) {
