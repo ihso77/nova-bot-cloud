@@ -150,10 +150,10 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       }
     })
 
-    // 3. Set start command to decode and run bot
+    // 3. Set start command to decode, install missing deps, and run bot
     const startCmd = language === 'python'
       ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && python /app/bot.py"'
-      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && node /app/bot.js"'
+      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && npm install --prefer-offline --no-audit --no-fund 2>/dev/null; node /app/bot.js"'
 
     await railwayGQL(`
       mutation($s: String!, $e: String!, $c: String!) {
