@@ -109,18 +109,23 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
   const codeB64 = Buffer.from(finalCode).toString('base64')
 
   try {
-    // 0. Check if service with same name already exists → reuse it (avoid hitting creation limit)
+    // 0. Find existing service with same name or any bot-* to reuse
     let serviceId: string | null = null
+    let allBotServices: { id: string; name: string }[] = []
     try {
       const allSvcs = await railwayGQL(`
         query($p: String!) {
           project(id: $p) { services { edges { node { id name } } } }
         }
       `, { p: NOVA_PROJECT_ID })
-      const existing = allSvcs.project?.services?.edges?.find((e: any) => e.node?.name === svcName)
-      if (existing?.node?.id) {
-        serviceId = existing.node.id
-        console.log(`Reusing existing service: ${serviceId}`)
+      allBotServices = (allSvcs.project?.services?.edges || [])
+        .map((e: any) => e.node)
+        .filter((n: any) => n.name.startsWith('bot-'))
+
+      const exact = allBotServices.find((s: any) => s.name === svcName)
+      if (exact?.id) {
+        serviceId = exact.id
+        console.log(`Reusing exact service: ${serviceId}`)
       }
     } catch (findErr: any) {
       console.warn('Find existing service warn:', findErr.message)
@@ -128,13 +133,30 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
 
     // 1. Create service only if it doesn't exist
     if (!serviceId) {
-      const d = await railwayGQL(`
-        mutation($p: String!, $n: String!, $r: String!) {
-          s: serviceCreate(input: { projectId: $p, name: $n, source: { repo: $r } }) { id }
+      try {
+        const d = await railwayGQL(`
+          mutation($p: String!, $n: String!, $r: String!) {
+            s: serviceCreate(input: { projectId: $p, name: $n, source: { repo: $r } }) { id }
+          }
+        `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
+        serviceId = d.s?.id
+      } catch (createErr: any) {
+        // If quota exceeded, find any existing bot-* service that isn't actively used
+        if (createErr.message?.includes('service creation limit') || createErr.message?.includes('25 services')) {
+          console.log('Service creation limit hit, looking for reusable service...')
+          // Try to find a bot-* service not currently assigned to another project
+          const freeBot = allBotServices.find((s: any) => s.name !== 'bot-deploy-proxy')
+          if (freeBot?.id) {
+            serviceId = freeBot.id
+            console.log(`Reusing free service ${freeBot.name}: ${serviceId}`)
+          } else {
+            throw new Error('تم تجاوز حد إنشاء الخدمات اليومي في Railway. حاول مرة أخرى غداً أو احذف بوتات غير مستخدمة.')
+          }
+        } else {
+          throw createErr
         }
-      `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
-      serviceId = d.s?.id
-      if (!serviceId) throw new Error('Failed to create Railway service')
+      }
+      if (!serviceId) throw new Error('Failed to create or find Railway service')
     }
 
     // 2. Set BOT_CODE_B64 env var (skip auto-deploy)
