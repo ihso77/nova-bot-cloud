@@ -16,7 +16,7 @@ interface Plan {
   description: string;
 }
 
-const PAYMENT_PROXY_URL = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api/payment';
+const PAYMENT_PROXY_URL = '/api/nova-api/payment';
 
 export default function Checkout() {
   const { t } = useTranslation();

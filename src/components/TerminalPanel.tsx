@@ -9,7 +9,7 @@ import { Wifi, WifiOff, RotateCcw, Maximize2, Minimize2, X } from 'lucide-react'
 // Import xterm CSS
 import '@xterm/xterm/css/xterm.css';
 
-const PROXY_WS_URL = 'wss://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
+const PROXY_WS_URL = '';
 
 export interface TerminalPanelHandle {
   reconnect: () => void;

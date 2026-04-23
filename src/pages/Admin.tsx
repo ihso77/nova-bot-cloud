@@ -283,8 +283,8 @@ export default function Admin() {
     loadCoupons();
   };
 
-  // Discord Bot — uses Railway proxy (not Supabase Edge Functions)
-  const PROXY = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
+  // Discord Bot — uses Vercel Serverless API
+  const PROXY = '/api/nova-api';
   const botHeaders = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
   const botHeadersPost = { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer nova-admin-2024-secret' } };
 

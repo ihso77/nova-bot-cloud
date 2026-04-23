@@ -24,7 +24,7 @@ import {
   Timer, Activity, Shield, HardDrive, SquareTerminal,
 } from 'lucide-react';
 
-const PROXY_URL = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
+const PROXY_URL = '/api/nova-api';
 
 const getAuthHeaders = async () => {
   const { data: { session } } = await supabase.auth.getSession();

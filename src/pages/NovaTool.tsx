@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-const PROXY = 'https://mmvdflwchecvzxzsumlm.supabase.co/functions/v1/nova-api';
+const PROXY = '/api/nova-api';
 const TOOL_IMAGE = '/NOVA_TOOL.png';
 const TOOL_FILE = '/NOVA_TOOL.zip';
 const TOOL_PRICE = 0.99;
