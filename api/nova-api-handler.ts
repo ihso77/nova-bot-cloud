@@ -294,18 +294,16 @@ async function handleBotInteractions(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-async function handleToolCheck(req: VercelRequest, res: VercelResponse, user: any) {
-  const slug = req.query.slug as string[]
-  const productId = slug[slug.length - 1]
+async function handleToolCheck(req: VercelRequest, res: VercelResponse, user: any, route: string) {
+  const productId = route.split('/').pop() || ''
   const { data } = await safeSelect('tool_purchases', 'id',
     (q: any) => q.eq('user_id', user.userId).eq('product_id', productId).eq('status', 'completed')
   )
   return res.json({ purchased: (data || []).length > 0 })
 }
 
-async function handleToolPurchase(req: VercelRequest, res: VercelResponse, user: any) {
-  const slug = req.query.slug as string[]
-  const productId = slug[slug.length - 1]
+async function handleToolPurchase(req: VercelRequest, res: VercelResponse, user: any, route: string) {
+  const productId = route.split('/').pop() || ''
   const { data } = await safeSelect('tool_purchases', '*',
     (q: any) => q.insert({ user_id: user.userId, product_id: productId, status: 'completed', amount: 0.99, currency: 'USD' }).select().single()
   )
@@ -378,11 +376,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'GET') {
         const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
-        return await handleToolCheck(req, res, u)
+        return await handleToolCheck(req, res, u, route)
       }
       if (route.match(/\/tool\/purchase\/[^/]+$/) && method === 'POST') {
         const u = await validateToken(req.headers.authorization); if (!u) return jsonError(401, 'Unauthorized')
-        return await handleToolPurchase(req, res, u)
+        return await handleToolPurchase(req, res, u, route)
       }
 
       // === Admin routes ===

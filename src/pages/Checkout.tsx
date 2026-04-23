@@ -18,6 +18,11 @@ interface Plan {
 
 const PAYMENT_PROXY_URL = '/api/nova-api-handler/payment';
 
+const getAuthHeaders = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return { 'Authorization': `Bearer ${session?.access_token || ''}` };
+};
+
 export default function Checkout() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -115,10 +120,11 @@ export default function Checkout() {
       }
 
       const siteUrl = window.location.origin;
+      const authHeaders = await getAuthHeaders();
 
       const res = await fetch(PAYMENT_PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: finalPrice,
           currency: 'USD',
