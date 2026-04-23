@@ -88,9 +88,13 @@ async function ensureTables() {
 }
 
 function getRoute(req: VercelRequest): string {
-  const slug = req.query.slug
-  if (Array.isArray(slug)) return '/' + slug.join('/')
-  return slug ? '/' + slug : '/'
+  // Vercel serves this file at /api/nova-api-handler
+  // Sub-paths like /api/nova-api-handler/deploy come as the full URL
+  // We need to extract the path after /api/nova-api-handler
+  const fullPath = req.url ? new URL(req.url).pathname : ''
+  const prefix = '/api/nova-api-handler'
+  if (fullPath === prefix || fullPath === prefix + '/') return '/'
+  return fullPath.slice(prefix.length) || '/'
 }
 
 // ============ Route Handlers ============
