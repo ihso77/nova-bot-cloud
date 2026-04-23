@@ -7,8 +7,27 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIs
 const ADMIN_SECRET = 'nova-admin-2024-secret'
 const PAYMENTO_API_KEY = process.env.PAYMENTO_API_KEY || ''
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || ''
+const RAILWAY_TOKEN = process.env.RAILWAY_API_TOKEN || ''
+const RAILWAY_API = 'https://backboard.railway.app/graphql/v2'
+const NOVA_PROJECT_ID = process.env.NOVA_PROJECT_ID || '6efec212-0e7a-4447-b19f-54284cd9eb82'
+const NOVA_ENV_ID = process.env.NOVA_ENV_ID || 'ef0df523-e0d2-4d2c-9b28-f49918076f08'
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY)
+
+// ============ Railway GraphQL Helper ============
+async function railwayGQL(query: string, vars: Record<string, any> = {}) {
+  if (!RAILWAY_TOKEN) throw new Error('RAILWAY_API_TOKEN not configured')
+  const res = await fetch(RAILWAY_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RAILWAY_TOKEN}` },
+    body: JSON.stringify({ query, variables: vars }),
+  })
+  const text = await res.text()
+  let json: any
+  try { json = JSON.parse(text) } catch { throw new Error('Bad response from Railway') }
+  if (json.errors) throw new Error(json.errors[0]?.message || 'GraphQL error')
+  return json.data
+}
 
 function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -77,33 +96,109 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
   const { projectId, language, code, botToken, name } = req.body
   if (!projectId || !language || !code || !botToken) return res.status(400).json({ error: 'Missing fields' })
   if (!['javascript', 'python'].includes(language)) return res.status(400).json({ error: 'Invalid language' })
-  if (botToken.length < 50) return res.status(400).json({ error: 'Invalid token' })
+  if (!botToken || botToken.length < 50 || /\s/.test(botToken) || botToken.includes('"')) {
+    return res.status(400).json({ error: 'توكن Discord غير صالح. التوكن يجب أن يكون طويل (>50 حرف) بدون مسافات.', code: 'INVALID_TOKEN' })
+  }
 
   const sanitizedName = (name || 'untitled').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase().slice(0, 30) || 'untitled'
-  const serviceName = `bot-${sanitizedName}-${Date.now()}`
+  const svcName = `bot-${sanitizedName}`
+  const repo = language === 'python' ? 'ihso77/nova-bot-runner-py' : 'ihso77/nova-bot-runner'
 
-  // Primary: update projects table (always exists)
-  await safeUpdate('projects', { status: 'deploying', railway_service_id: serviceName }, 'id', projectId)
+  // Replace YOUR_TOKEN with real token in code
+  const finalCode = code.replace(/(['"])YOUR_TOKEN\1/g, `$1${botToken}$1`)
+  const codeB64 = Buffer.from(finalCode).toString('base64')
 
-  // Secondary: try bot_processes/bot_secrets (may not exist yet)
-  await safeUpsert('bot_processes', {
-    id: serviceName, user_id: user.userId, project_id: projectId,
-    name: sanitizedName, language, status: 'deploying',
-    code_size: code.length, started_at: new Date().toISOString(),
-  }, 'id')
-  await safeUpsert('bot_secrets', {
-    bot_id: serviceName, user_id: user.userId, token: botToken, code,
-  }, 'bot_id')
+  try {
+    // 0. Delete existing service with same name if it exists
+    try {
+      const allSvcs = await railwayGQL(`
+        query($p: String!) {
+          project(id: $p) { services { edges { node { id name } } } }
+        }
+      `, { p: NOVA_PROJECT_ID })
+      const existing = allSvcs.project?.services?.edges?.find((e: any) => e.node?.name === svcName)
+      if (existing?.node?.id) {
+        await railwayGQL(`mutation($id: String!) { serviceDelete(id: $id) }`, { id: existing.node.id })
+        await new Promise(r => setTimeout(r, 2000))
+      }
+    } catch (delErr: any) {
+      console.warn('Delete existing service warn:', delErr.message)
+    }
 
-  return res.json({ success: true, serviceId: serviceName, serviceName })
+    // 1. Create service from pre-built runner repo
+    const d = await railwayGQL(`
+      mutation($p: String!, $n: String!, $r: String!) {
+        s: serviceCreate(input: { projectId: $p, name: $n, source: { repo: $r } }) { id }
+      }
+    `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
+    const serviceId = d.s?.id
+    if (!serviceId) throw new Error('Failed to create Railway service')
+
+    // 2. Set BOT_CODE_B64 env var (skip auto-deploy)
+    await railwayGQL(`
+      mutation($input: VariableUpsertInput!) {
+        v: variableUpsert(input: $input)
+      }
+    `, {
+      input: {
+        projectId: NOVA_PROJECT_ID,
+        environmentId: NOVA_ENV_ID,
+        serviceId: serviceId,
+        name: 'BOT_CODE_B64',
+        value: codeB64,
+        skipDeploys: true
+      }
+    })
+
+    // 3. Set start command to decode and run bot
+    const startCmd = language === 'python'
+      ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && python /app/bot.py"'
+      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && node /app/bot.js"'
+
+    await railwayGQL(`
+      mutation($s: String!, $e: String!, $c: String!) {
+        u: serviceInstanceUpdate(serviceId: $s, environmentId: $e, input: { startCommand: $c })
+      }
+    `, { s: serviceId, e: NOVA_ENV_ID, c: startCmd })
+
+    // 4. Trigger deploy
+    await railwayGQL(`
+      mutation($s: String!, $e: String!) {
+        d: serviceInstanceDeploy(serviceId: $s, environmentId: $e)
+      }
+    `, { s: serviceId, e: NOVA_ENV_ID })
+
+    // 5. Update project in DB
+    await safeUpdate('projects', { status: 'deploying', railway_service_id: serviceId }, 'id', projectId)
+
+    return res.json({ success: true, serviceId, serviceName: svcName })
+  } catch (err: any) {
+    console.error('Railway deploy error:', err.message)
+    const msg = err.message || 'Internal server error'
+    if (msg.includes('Free plan') || msg.includes('resource provision limit') || msg.includes('upgrade')) {
+      return res.status(503).json({ error: 'تم تجاوز حد الموارد المجانية في Railway. احذف البوتات غير المستخدمة أو استخدم زر تنظيف البوتات.', code: 'QUOTA_EXCEEDED' })
+    }
+    if (msg.includes('already exists')) {
+      return res.status(409).json({ error: 'اسم البوت موجود بالفعل، جرب تغيير اسم المشروع', code: 'ALREADY_EXISTS' })
+    }
+    return res.status(500).json({ error: msg })
+  }
 }
 
 async function handleStop(req: VercelRequest, res: VercelResponse, user: any) {
   const { serviceId } = req.body
   if (!serviceId) return res.status(400).json({ error: 'Missing serviceId' })
 
-  await safeUpdate('bot_processes', { status: 'stopped', stopped_at: new Date().toISOString() }, 'id', serviceId)
-  await safeDelete('bot_secrets', 'bot_id', serviceId)
+  try {
+    // Delete the Railway service
+    await railwayGQL(`mutation($id: String!) { serviceDelete(id: $id) }`, { id: serviceId })
+  } catch (err: any) {
+    console.warn('Railway stop error:', err.message)
+    // Continue even if Railway delete fails
+  }
+
+  // Update DB status
+  await safeUpdate('projects', { status: 'stopped', railway_service_id: null }, 'railway_service_id', serviceId)
   return res.json({ success: true })
 }
 
@@ -111,25 +206,71 @@ async function handleStatus(req: VercelRequest, res: VercelResponse) {
   const serviceId = req.query.serviceId as string
   if (!serviceId) return res.status(400).json({ error: 'Missing serviceId' })
 
-  // Try bot_processes first
-  const { data: bot } = await safeSelect('bot_processes', 'status,started_at,stopped_at,logs',
-    (q: any) => q.eq('id', serviceId).single()
-  )
-  if (bot) {
-    const m: Record<string, string> = { deploying: 'DEPLOYING', running: 'SUCCESS', stopped: 'DELETED', error: 'CRASHED', crashed: 'CRASHED' }
-    return res.json({ status: m[bot.status] || 'INITIALIZING', logs: bot.logs || [], startedAt: bot.started_at })
+  if (!RAILWAY_TOKEN) {
+    return res.json({ status: 'unknown', reason: 'no_railway_token' })
   }
 
-  // Fallback: check projects table
-  const { data: proj } = await safeSelect('projects', 'status',
-    (q: any) => q.eq('railway_service_id', serviceId).single()
-  )
-  if (proj) {
-    const m: Record<string, string> = { deploying: 'DEPLOYING', running: 'SUCCESS', stopped: 'DELETED', error: 'CRASHED' }
-    return res.json({ status: m[proj.status] || 'INITIALIZING', logs: [] })
-  }
+  try {
+    // Query Railway directly for service status
+    const svcData = await railwayGQL(`
+      query($sid: String!) {
+        service(id: $sid) {
+          id
+          deployments(first: 5) {
+            edges { node { id status createdAt } }
+          }
+        }
+      }
+    `, { sid: serviceId })
 
-  return res.json({ status: 'DELETED', message: 'Bot not found' })
+    if (!svcData.service) {
+      return res.json({ status: 'DELETED', reason: 'service_not_found' })
+    }
+
+    const deployment = svcData.service.deployments?.edges?.[0]?.node
+
+    if (!deployment) {
+      return res.json({ status: 'INITIALIZING', reason: 'no_deployment_yet' })
+    }
+
+    // Fetch logs if deployment is done
+    let logs: { message: string; severity: string }[] = []
+    if (deployment.status === 'CRASHED' || deployment.status === 'SUCCESS') {
+      try {
+        const logsData = await railwayGQL(`
+          query($did: String!) { deploymentLogs(deploymentId: $did) { message severity } }
+        `, { did: deployment.id })
+        if (logsData.deploymentLogs) {
+          const seen = new Set()
+          logs = logsData.deploymentLogs
+            .filter((l: any) => {
+              if (!l.message || l.message.trim() === '') return false
+              if (l.message.startsWith('    at ') || l.message.startsWith('  at ') ||
+                  l.message.startsWith('    ') && l.message.includes('.js:') ||
+                  l.message.match(/^\s*\^\s*$/) || l.message === '}' || l.message === '{') return false
+              if (l.severity === 'error' || l.severity === 'fatal' ||
+                  l.message.includes('Logged in') || l.message.includes('Ready') ||
+                  l.message.includes('ready') || l.message.includes('Error') ||
+                  l.message.includes('error') || l.message.includes('bot.js') || l.message.includes('bot.py')) {
+                const key = l.message.trim().substring(0, 200)
+                if (seen.has(key)) return false
+                seen.add(key)
+                return true
+              }
+              return false
+            })
+            .map((l: any) => ({ message: l.message.trim(), severity: l.severity }))
+        }
+      } catch (logErr: any) {
+        console.warn('Status logs fetch failed:', logErr.message)
+      }
+    }
+
+    res.json({ status: deployment.status, logs, deploymentId: deployment.id })
+  } catch (err: any) {
+    console.warn('Status check failed for', serviceId, ':', err.message)
+    res.json({ status: 'unknown', reason: err.message })
+  }
 }
 
 async function handlePayment(req: VercelRequest, res: VercelResponse, user: any) {

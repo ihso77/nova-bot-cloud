@@ -8,7 +8,7 @@
   ],
   "functions": {
     "api/nova-api-handler.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     }
   }
 }
