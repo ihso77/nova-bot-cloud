@@ -102,15 +102,15 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
 
   const sanitizedName = (name || 'untitled').replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase().slice(0, 30) || 'untitled'
   const svcName = `bot-${sanitizedName}`
-  const repo = language === 'python' ? 'ihso77/nova-bot-runner-py' : 'ihso77/nova-bot-runner'
 
   // Replace YOUR_TOKEN with real token in code
   const finalCode = code.replace(/(['"])YOUR_TOKEN\1/g, `$1${botToken}$1`)
   const codeB64 = Buffer.from(finalCode).toString('base64')
 
   try {
-    // 0. Find existing service with same name or any bot-* to reuse
+    // 0. Find existing service with same name to reuse
     let serviceId: string | null = null
+    let reusedService = false
     let allBotServices: { id: string; name: string }[] = []
     try {
       const allSvcs = await railwayGQL(`
@@ -125,14 +125,13 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       const exact = allBotServices.find((s: any) => s.name === svcName)
       if (exact?.id) {
         serviceId = exact.id
-        console.log(`Reusing exact service: ${serviceId}`)
+        reusedService = true
       }
-    } catch (findErr: any) {
-      console.warn('Find existing service warn:', findErr.message)
-    }
+    } catch {}
 
     // 1. Create service only if it doesn't exist
     if (!serviceId) {
+      const repo = language === 'python' ? 'ihso77/nova-bot-runner-py' : 'ihso77/nova-bot-runner'
       try {
         const d = await railwayGQL(`
           mutation($p: String!, $n: String!, $r: String!) {
@@ -141,25 +140,23 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
         `, { p: NOVA_PROJECT_ID, n: svcName, r: repo })
         serviceId = d.s?.id
       } catch (createErr: any) {
-        // If quota exceeded, find any existing bot-* service that isn't actively used
         if (createErr.message?.includes('service creation limit') || createErr.message?.includes('25 services')) {
-          console.log('Service creation limit hit, looking for reusable service...')
-          // Try to find a bot-* service not currently assigned to another project
-          const freeBot = allBotServices.find((s: any) => s.name !== 'bot-deploy-proxy')
+          // Fallback: reuse any existing bot-* service
+          const freeBot = allBotServices.find(() => true)
           if (freeBot?.id) {
             serviceId = freeBot.id
-            console.log(`Reusing free service ${freeBot.name}: ${serviceId}`)
+            reusedService = true
           } else {
-            throw new Error('تم تجاوز حد إنشاء الخدمات اليومي في Railway. حاول مرة أخرى غداً أو احذف بوتات غير مستخدمة.')
+            throw new Error('تم تجاوز حد إنشاء الخدمات اليومي في Railway. حاول مرة أخرى بعد ساعة.')
           }
         } else {
           throw createErr
         }
       }
-      if (!serviceId) throw new Error('Failed to create or find Railway service')
+      if (!serviceId) throw new Error('Failed to create Railway service')
     }
 
-    // 2. Set BOT_CODE_B64 env var (skip auto-deploy)
+    // 2. Set BOT_CODE_B64 env var
     await railwayGQL(`
       mutation($input: VariableUpsertInput!) {
         v: variableUpsert(input: $input)
@@ -175,10 +172,10 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       }
     })
 
-    // 3. Set start command: decode code, install common extra deps, run bot
+    // 3. Set start command based on language
     const startCmd = language === 'python'
-      ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && python /app/bot.py"'
-      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && npm install discord.js-selfbot-v13 --no-save --no-audit --no-fund 2>/dev/null; node /app/bot.js"'
+      ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && pip install discord.py --quiet 2>/dev/null; python /app/bot.py"'
+      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && node /app/bot.js"'
 
     await railwayGQL(`
       mutation($s: String!, $e: String!, $c: String!) {
@@ -186,19 +183,30 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       }
     `, { s: serviceId, e: NOVA_ENV_ID, c: startCmd })
 
-    // 4. Restart service (not full deploy - avoids slow rebuild and cache issues)
-    try {
-      await railwayGQL(`
-        mutation($s: String!, $e: String!) {
-          d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
-        }
-      `, { s: serviceId, e: NOVA_ENV_ID })
-    } catch (restartErr: any) {
-      // Fallback to deploy if restart not available
+    // 4. Only deploy (build Docker) for NEW services. For reused services, just restart.
+    if (!reusedService) {
       try {
         await railwayGQL(`
           mutation($s: String!, $e: String!) {
             d: serviceInstanceDeploy(serviceId: $s, environmentId: $e)
+          }
+        `, { s: serviceId, e: NOVA_ENV_ID })
+      } catch (deployErr: any) {
+        // If deploy fails, try restart
+        try {
+          await railwayGQL(`
+            mutation($s: String!, $e: String!) {
+              d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
+            }
+          `, { s: serviceId, e: NOVA_ENV_ID })
+        } catch {}
+      }
+    } else {
+      // Reused service - just restart to pick up new env vars
+      try {
+        await railwayGQL(`
+          mutation($s: String!, $e: String!) {
+            d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
           }
         `, { s: serviceId, e: NOVA_ENV_ID })
       } catch {}
