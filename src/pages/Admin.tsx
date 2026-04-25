@@ -713,8 +713,8 @@ export default function Admin() {
                 {[
                   { icon: Package, label: t('admin.totalOrders'), value: 195, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-500' },
                   { icon: CheckCircle, label: t('admin.completedOrders'), value: 215, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-500' },
-                  { icon: Users, label: t('admin.totalUsersStat'), value: 163, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/15', iconColor: 'text-green-500' },
-                  { icon: UserIcon, label: t('admin.customers'), value: 245, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-500' },
+                  { icon: Users, label: t('admin.totalUsersStat'), value: 245, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/15', iconColor: 'text-green-500' },
+                  { icon: UserIcon, label: t('admin.customers'), value: 163, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-500' },
                 ].map((s, i) => (
                   <motion.div
                     key={s.label}
