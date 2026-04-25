@@ -16,7 +16,7 @@ import {
   Shield, Users, Server, CreditCard, Settings, Gift, BarChart3,
   ChevronLeft, Search, Crown, Activity, Clock, Mail, User as UserIcon,
   Monitor, Trash2, Eye, Ban, Wrench, Zap, ArrowLeft, Star, Package,
-  ToggleLeft, ToggleRight, Send, X, Check, Sparkles, Heart,
+  ToggleLeft, ToggleRight, Send, X, Check, CheckCircle, Sparkles, Heart,
   TrendingUp, Layers, Database, ShieldCheck, FileCode2, Ticket, Plus, Percent,
   Bot, MessageSquare, Hash, Menu,
 } from 'lucide-react';
@@ -711,10 +711,10 @@ export default function Admin() {
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 gradient-text">{t('admin.overview')}</h2>
               <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                 {[
-                  { icon: Users, label: t('admin.totalUsers'), value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
-                  { icon: Server, label: t('admin.totalProjects'), value: stats.projects, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/10' },
-                  { icon: CreditCard, label: t('admin.activeSubscriptions'), value: stats.subs, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/10' },
-                  { icon: Activity, label: t('admin.runningBots'), value: stats.running, color: 'from-yellow-500 to-orange-500', iconBg: 'bg-yellow-500/10' },
+                  { icon: Package, label: t('admin.totalOrders'), value: stats.users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-500' },
+                  { icon: CheckCircle, label: t('admin.completedOrders'), value: stats.projects, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-500' },
+                  { icon: Users, label: t('admin.totalUsersStat'), value: stats.subs, color: 'from-green-500 to-emerald-500', iconBg: 'bg-green-500/15', iconColor: 'text-green-500' },
+                  { icon: UserIcon, label: t('admin.customers'), value: stats.running, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/15', iconColor: 'text-blue-500' },
                 ].map((s, i) => (
                   <motion.div
                     key={s.label}
@@ -724,8 +724,8 @@ export default function Admin() {
                     className="glass rounded-xl p-3 sm:p-5 group hover:scale-[1.02] transition-transform"
                   >
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${s.iconBg} flex items-center justify-center`}>
-                        <s.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${s.iconBg} flex items-center justify-center`}>
+                        <s.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${s.iconColor}`} />
                       </div>
                       <TrendingUp className="w-4 h-4 text-muted-foreground/30" />
                     </div>
