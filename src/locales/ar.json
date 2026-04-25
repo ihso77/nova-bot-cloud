@@ -6,7 +6,8 @@
     "admin": "الأدمن",
     "login": "دخول",
     "register": "تسجيل",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "profile": "الملف الشخصي"
   },
   "lang": {
     "ar": "العربية",
@@ -652,5 +653,24 @@
     "securePayment": "دفع آمن",
     "instantDelivery": "استلام فوري",
     "moneyBack": "ضمان استرجاع"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "backToDashboard": "العودة للوحة التحكم",
+    "changePassword": "تغيير كلمة المرور",
+    "newPassword": "كلمة المرور الجديدة",
+    "newPasswordPlaceholder": "أدخل كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "confirmPasswordPlaceholder": "أعد إدخال كلمة المرور الجديدة",
+    "passwordRequirements": "متطلبات كلمة المرور:",
+    "reqMinLength": "8 أحرف على الأقل",
+    "reqMatch": "كلمتا المرور متطابقتان",
+    "updatePassword": "تحديث كلمة المرور",
+    "ownerTitle": "مالك المنصة",
+    "ownerDesc": "لديك صلاحيات كاملة على جميع إعدادات وإدارة المنصة",
+    "passwordChanged": "تم تغيير كلمة المرور بنجاح",
+    "passwordError": "حدث خطأ أثناء تغيير كلمة المرور",
+    "passwordsNotMatch": "كلمتا المرور غير متطابقتين",
+    "fillAllFields": "الرجاء ملء جميع الحقول"
   }
 }

@@ -22,6 +22,7 @@ import NitroGenerator from "./pages/NitroGenerator";
 import DiscordTimestamp from "./pages/DiscordTimestamp";
 import NovaTool from "./pages/NovaTool";
 import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
 import GiftPopup from "./components/GiftPopup";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => {
             <Route path="/payment/success" element={<PaymentSuccess />} />
             <Route path="/payment/cancel" element={<PaymentCancel />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/tools" element={<Tools />} />
             <Route path="/tools/discord-username-checker" element={<DiscordUsernameChecker />} />
             <Route path="/tools/nitro-generator" element={<NitroGenerator />} />

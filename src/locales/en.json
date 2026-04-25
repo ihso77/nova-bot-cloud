@@ -6,7 +6,8 @@
     "admin": "Admin",
     "login": "Login",
     "register": "Register",
-    "logout": "Logout"
+    "logout": "Logout",
+    "profile": "Profile"
   },
   "lang": {
     "ar": "العربية",
@@ -647,5 +648,24 @@
     "securePayment": "Secure Payment",
     "instantDelivery": "Instant Delivery",
     "moneyBack": "Money-back Guarantee"
+  },
+  "profile": {
+    "title": "Profile",
+    "backToDashboard": "Back to Dashboard",
+    "changePassword": "Change Password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Re-enter new password",
+    "passwordRequirements": "Password requirements:",
+    "reqMinLength": "At least 8 characters",
+    "reqMatch": "Passwords match",
+    "updatePassword": "Update Password",
+    "ownerTitle": "Platform Owner",
+    "ownerDesc": "You have full access to all platform settings and management",
+    "passwordChanged": "Password changed successfully",
+    "passwordError": "An error occurred while changing password",
+    "passwordsNotMatch": "Passwords do not match",
+    "fillAllFields": "Please fill all fields"
   }
 }

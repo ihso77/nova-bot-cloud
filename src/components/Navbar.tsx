@@ -4,8 +4,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { LogOut, Shield, Server, Menu, Wrench, Languages, ChevronDown } from 'lucide-react';
+import { LogOut, Shield, Server, Menu, Wrench, Languages, ChevronDown, User, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const OWNER_EMAIL = 'piohio309j@gmail.com';
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuth();
@@ -75,6 +77,11 @@ export default function Navbar() {
           <Link to="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-300 hover:text-white hover:bg-white/5 transition" onClick={() => setOpen(false)}>
             <span>{t('nav.dashboard')}</span>
           </Link>
+          <Link to="/profile" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-300 hover:text-white hover:bg-white/5 transition" onClick={() => setOpen(false)}>
+            <User className="w-5 text-center" />
+            <span>{t('nav.profile')}</span>
+            {user.email === OWNER_EMAIL && <Crown className="w-4 text-amber-400 me-auto" />}
+          </Link>
           {isAdmin && (
             <Link to="/admin" className="flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-300 hover:text-white hover:bg-white/5 transition" onClick={() => setOpen(false)}>
               <Shield className="w-5 text-center" />
@@ -126,6 +133,23 @@ export default function Navbar() {
                   <Shield className="w-3.5 h-3.5" /> {t('nav.admin')}
                 </Link>
               )}
+              <button
+                onClick={() => navigate('/profile')}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm transition hover:bg-white/5 ${
+                  user.email === OWNER_EMAIL
+                    ? 'text-amber-400'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  user.email === OWNER_EMAIL
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : 'bg-white/10 text-zinc-300'
+                }`}>
+                  {(user.user_metadata?.display_name || user.email || '?').charAt(0).toUpperCase()}
+                </div>
+                {user.email === OWNER_EMAIL && <Crown className="w-3 h-3" />}
+              </button>
               <LangButton />
               <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-white/5" onClick={() => { signOut(); navigate('/'); }}>
                 <LogOut className="w-4 h-4" />
