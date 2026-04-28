@@ -653,6 +653,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.json({ error: e.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
         }
       }
+      if (route === '/admin/railway-services' && method === 'GET') {
+        if (!await adminAuth(req.headers.authorization, res)) return res
+        if (!RAILWAY_TOKEN) return res.json({ error: 'No Railway token' })
+        try {
+          const data = await railwayGQL(`
+            query($p: String!) {
+              project(id: $p) { services { edges { node { id name } } } }
+            }
+          `, { p: NOVA_PROJECT_ID })
+          const services = (data.project?.services?.edges || []).map((e: any) => e.node)
+          return res.json({ services, projectId: NOVA_PROJECT_ID })
+        } catch (e: any) {
+          return res.json({ error: e.message })
+        }
+      }
 
       return res.status(404).json({ error: 'Not found', route })
     } catch (e: any) {
