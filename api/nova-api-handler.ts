@@ -175,7 +175,7 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
     // 3. Set start command based on language
     const startCmd = language === 'python'
       ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && pip install discord.py --quiet 2>/dev/null; python /app/bot.py"'
-      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && cd /app && npm install discord.js-selfbot-v13 debug node-fetch@2 ws @discordjs/voice libsodium-wrappers ffmpeg-static opus --no-save --quiet 2>&1 | tail -3 && node /app/bot.js"'
+      : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && cd /app && npm install discord.js discord.js-selfbot-v13 debug node-fetch@2 ws @discordjs/voice libsodium-wrappers ffmpeg-static opus --no-save --quiet 2>&1 | tail -3 && node /app/bot.js"'
 
     await railwayGQL(`
       mutation($s: String!, $e: String!, $c: String!) {
@@ -687,7 +687,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Set start command
           const startCmd = language === 'python'
             ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && pip install discord.py --quiet 2>/dev/null; python /app/bot.py"'
-            : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && cd /app && npm install discord.js-selfbot-v13 debug node-fetch@2 ws @discordjs/voice libsodium-wrappers ffmpeg-static opus --no-save --quiet 2>&1 | tail -3 && node /app/bot.js"'
+            : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && cd /app && npm install discord.js discord.js-selfbot-v13 debug node-fetch@2 ws @discordjs/voice libsodium-wrappers ffmpeg-static opus --no-save --quiet 2>&1 | tail -3 && node /app/bot.js"'
           await railwayGQL(`
             mutation($s: String!, $e: String!, $c: String!) {
               u: serviceInstanceUpdate(serviceId: $s, environmentId: $e, input: { startCommand: $c })
