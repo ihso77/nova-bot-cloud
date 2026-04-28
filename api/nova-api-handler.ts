@@ -645,9 +645,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!await adminAuth(req.headers.authorization, res)) return res
         const pid = req.query.projectId as string
         if (!pid) return jsonError(400, 'Missing projectId')
-        const { data: files } = await safeSelect('project_files', 'file_name, file_path, content', (q: any) => q.eq('project_id', pid))
-        const { data: project } = await safeSelect('projects', 'id, name, language, status, railway_service_id', (q: any) => q.eq('id', pid).single())
-        return res.json({ project, files })
+        try {
+          const { data: files, error: fErr } = await supabaseAdmin.from('project_files').select('file_name, file_path, content').eq('project_id', pid)
+          const { data: project, error: pErr } = await supabaseAdmin.from('projects').select('id, name, language, status, railway_service_id').eq('id', pid).single()
+          return res.json({ project, files, fError: fErr?.message, pError: pErr?.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
+        } catch (e: any) {
+          return res.json({ error: e.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
+        }
       }
 
       return res.status(404).json({ error: 'Not found', route })
