@@ -668,6 +668,78 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.json({ error: e.message })
         }
       }
+      if (route === '/admin/railway-deploy' && method === 'POST') {
+        if (!await adminAuth(req.headers.authorization, res)) return res
+        const { code, language, serviceId } = req.body
+        if (!code || !language) return jsonError(400, 'Missing code or language')
+        const targetId = serviceId || '128a6ddb-0408-403f-9398-7e7bb3a499fc'
+        try {
+          const codeB64 = Buffer.from(code).toString('base64')
+          // Set env var
+          await railwayGQL(`
+            mutation($input: VariableUpsertInput!) { v: variableUpsert(input: $input) }
+          `, {
+            input: {
+              projectId: NOVA_PROJECT_ID, environmentId: NOVA_ENV_ID,
+              serviceId: targetId, name: 'BOT_CODE_B64', value: codeB64, skipDeploys: true
+            }
+          })
+          // Set start command
+          const startCmd = language === 'python'
+            ? 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.py && pip install discord.py --quiet 2>/dev/null; python /app/bot.py"'
+            : 'sh -c "echo $BOT_CODE_B64 | base64 -d > /app/bot.js && npm install discord.js-selfbot-v13 --quiet 2>/dev/null; node /app/bot.js"'
+          await railwayGQL(`
+            mutation($s: String!, $e: String!, $c: String!) {
+              u: serviceInstanceUpdate(serviceId: $s, environmentId: $e, input: { startCommand: $c })
+            }
+          `, { s: targetId, e: NOVA_ENV_ID, c: startCmd })
+          // Restart
+          await railwayGQL(`
+            mutation($s: String!, $e: String!) { d: serviceInstanceRestart(serviceId: $s, environmentId: $e) }
+          `, { s: targetId, e: NOVA_ENV_ID })
+          return res.json({ success: true, serviceId: targetId })
+        } catch (e: any) {
+          return res.status(500).json({ error: e.message })
+        }
+      }
+      if (route === '/admin/railway-logs' && method === 'GET') {
+        if (!await adminAuth(req.headers.authorization, res)) return res
+        const sid = req.query.serviceId as string || '128a6ddb-0408-403f-9398-7e7bb3a499fc'
+        try {
+          const data = await railwayGQL(`
+            query($sid: String!) {
+              service(id: $sid) {
+                deployments(first: 3) { edges { node { id status createdAt } } }
+              }
+            }
+          `, { sid })
+          const deployments = (data.service?.deployments?.edges || []).map((e: any) => e.node)
+          let logs: any[] = []
+          for (const dep of deployments.slice(0, 1)) {
+            try {
+              const logsData = await railwayGQL(`
+                query($did: String!) { deploymentLogs(deploymentId: $did) { message severity timestamp } }
+              `, { did: dep.id })
+              if (logsData.deploymentLogs) {
+                const seen = new Set()
+                logs = logsData.deploymentLogs
+                  .filter((l: any) => l.message && l.message.trim())
+                  .filter((l: any) => {
+                    const key = l.message.trim().substring(0, 300)
+                    if (seen.has(key)) return false
+                    seen.add(key)
+                    return true
+                  })
+                  .slice(-50)
+                  .map((l: any) => ({ message: l.message.trim(), severity: l.severity, timestamp: l.timestamp }))
+              }
+            } catch {}
+          }
+          return res.json({ deployments, logs })
+        } catch (e: any) {
+          return res.json({ error: e.message })
+        }
+      }
 
       return res.status(404).json({ error: 'Not found', route })
     } catch (e: any) {
