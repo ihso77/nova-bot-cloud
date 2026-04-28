@@ -183,7 +183,7 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
       }
     `, { s: serviceId, e: NOVA_ENV_ID, c: startCmd })
 
-    // 4. Only deploy (build Docker) for NEW services. For reused services, just restart.
+    // 4. Only deploy (build Docker) for NEW services. For reused services, just redeploy.
     if (!reusedService) {
       try {
         await railwayGQL(`
@@ -192,21 +192,21 @@ async function handleDeploy(req: VercelRequest, res: VercelResponse, user: any) 
           }
         `, { s: serviceId, e: NOVA_ENV_ID })
       } catch (deployErr: any) {
-        // If deploy fails, try restart
+        // If deploy fails, try redeploy
         try {
           await railwayGQL(`
             mutation($s: String!, $e: String!) {
-              d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
+              d: serviceInstanceRedeploy(serviceId: $s, environmentId: $e)
             }
           `, { s: serviceId, e: NOVA_ENV_ID })
         } catch {}
       }
     } else {
-      // Reused service - just restart to pick up new env vars
+      // Reused service - just redeploy to pick up new env vars
       try {
         await railwayGQL(`
           mutation($s: String!, $e: String!) {
-            d: serviceInstanceRestart(serviceId: $s, environmentId: $e)
+            d: serviceInstanceRedeploy(serviceId: $s, environmentId: $e)
           }
         `, { s: serviceId, e: NOVA_ENV_ID })
       } catch {}
@@ -693,10 +693,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               u: serviceInstanceUpdate(serviceId: $s, environmentId: $e, input: { startCommand: $c })
             }
           `, { s: targetId, e: NOVA_ENV_ID, c: startCmd })
-          // Restart
-          await railwayGQL(`
-            mutation($s: String!, $e: String!) { d: serviceInstanceRestart(serviceId: $s, environmentId: $e) }
-          `, { s: targetId, e: NOVA_ENV_ID })
+          // Restart (redeploy)
+          try {
+            await railwayGQL(`
+              mutation($s: String!, $e: String!) { d: serviceInstanceRedeploy(serviceId: $s, environmentId: $e) }
+            `, { s: targetId, e: NOVA_ENV_ID })
+          } catch {
+            try {
+              await railwayGQL(`
+                mutation($s: String!, $e: String!) { d: serviceInstanceDeployV2(serviceId: $s, environmentId: $e) }
+              `, { s: targetId, e: NOVA_ENV_ID })
+            } catch {}
+          }
           return res.json({ success: true, serviceId: targetId })
         } catch (e: any) {
           return res.status(500).json({ error: e.message })
