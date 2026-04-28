@@ -641,6 +641,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (route === '/bot/setup' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleBotSetup(res) }
       if (route === '/cleanup-bots' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleCleanup(res) }
       if (route === '/admin/import-project' && method === 'POST') { if (!await adminAuth(req.headers.authorization, res)) return res; return await handleImportProject(req, res) }
+      if (route === '/admin/project-files' && method === 'GET') {
+        if (!await adminAuth(req.headers.authorization, res)) return res
+        const pid = req.query.projectId as string
+        if (!pid) return jsonError(400, 'Missing projectId')
+        const { data: files } = await safeSelect('project_files', 'file_name, file_path, content', (q: any) => q.eq('project_id', pid))
+        const { data: project } = await safeSelect('projects', 'id, name, language, status, railway_service_id', (q: any) => q.eq('id', pid).single())
+        return res.json({ project, files })
+      }
 
       return res.status(404).json({ error: 'Not found', route })
     } catch (e: any) {
