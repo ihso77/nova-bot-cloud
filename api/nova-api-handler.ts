@@ -647,8 +647,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!pid) return jsonError(400, 'Missing projectId')
         try {
           const { data: files, error: fErr } = await supabaseAdmin.from('project_files').select('file_name, file_path, content').eq('project_id', pid)
-          const { data: project, error: pErr } = await supabaseAdmin.from('projects').select('id, name, language, status, railway_service_id').eq('id', pid).single()
-          return res.json({ project, files, fError: fErr?.message, pError: pErr?.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
+          const { data: projects, error: pErr } = await supabaseAdmin.from('projects').select('id, name, language, status, railway_service_id').eq('id', pid)
+          return res.json({ project: projects?.[0] || null, files: files || [], fError: fErr?.message, pError: pErr?.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
         } catch (e: any) {
           return res.json({ error: e.message, usingServiceKey: !!SUPABASE_SERVICE_KEY })
         }
